@@ -8,7 +8,6 @@ class VfsManager(object):
         self.fd_bridges = []
 
     def check_acl(self, path, mode):
-        print 'path=%s\nroot=%s\n' % (path, self.root)
         return path.startswith(self.root)
 
     def access(self, filename, mode):
@@ -37,31 +36,34 @@ class VfsManager(object):
 
     def open_dup(self, filename, perms, mode):
         try:
-            fd = os.open(filename, perms, mode)
+            fd = os.open(filename, perms)
         except IOError, e:
             return (-1, e.errno)
         dupfd = self.nextfd
         self.fd_bridges.append((fd, dupfd))
-        self.nextfd += 1
-        return (dupfd, 0)
+        self.nextfd += 1 ####  XXX: We need to verify +1
+        return (dupfd+1, 0) #### +1 because the untrusted has an offset of -1
 
     def select_loop(self, controlfd):
         while True:
             fd_flat=[]
             for fdtuple in self.fd_bridges:
                 fd_flat += list(fdtuple)
-            fd_flat += [controlfd]
-            (rlist, wlist, xlist) = select.select(fd_flat, [], [])
+            rfd_flat = fd_flat + [controlfd]
+            (rlist, wlist, xlist) = select.select(rfd_flat, fd_flat, [], 30)
             if rlist:
+                # print rlist
                 if controlfd in rlist:
                     return True
                 else:
                     for a,b in self.fd_bridges:
-                        if a in rlist:
+                        if a in rlist and b in wlist:
                             buf = os.read(a, 512)
-                            print ' %d ~~> %d  "%s"' % (a, b, buf)
+                            if not buf:
+                                ### XXX: remove the file descriptor
+                                self.fd_bridges=[]
                             os.write(b, buf)
-                        if b in rlist:
+                        if b in rlist and a in wlist:
                             os.write(a, os.read(b, 512))
         return False
 
