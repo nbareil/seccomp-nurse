@@ -45,7 +45,7 @@ NATIVE_EXIT = 6
 class SandboxedProcess:
     def __init__(self, fd=-1):
         self.fd = os.fdopen(fd, 'w+')
-        self.vfs = vfs.VfsManager(root='/var', nextfd=fd+1)
+        self.vfs = vfs.VfsManager(root='/', nextfd=fd+1)
 
     def syscall_request(self):
         tubelog.debug('syscall request ringing...')

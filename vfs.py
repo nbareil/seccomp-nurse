@@ -62,7 +62,10 @@ class VfsManager(object):
                             if not buf:
                                 ### XXX: remove the file descriptor
                                 self.fd_bridges=[]
-                            os.write(b, buf)
+                                os.close(a)
+                                os.close(b)
+                            else:
+                                os.write(b, buf)
                         if b in rlist and a in wlist:
                             os.write(a, os.read(b, 512))
         return False
