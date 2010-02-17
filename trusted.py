@@ -56,7 +56,8 @@ class SandboxedProcess:
 
         if mm.eax == 5:
             self.open(mm)
-
+        elif mm.eax == 0xc5:
+            self.fstat(mm.ebx, mm.ecx)
         elif mm.eax == 0xfc:
             self.exit(mm.ebx)
 
@@ -88,6 +89,13 @@ class SandboxedProcess:
         tubelog.debug('>>> ' + buf)
         return buf
 
+
+    def poke_memory(self, addr, buf):
+        length = len(buf)
+        tubelog.debug('<<< poke_memory(%#x, "%s") len=%d' % (addr, buf.encode('hex'), length))
+        self.write(struct.pack('III', POKE_MEMORY, addr, length))
+        self.write(buf)
+
     def exit(self, status):
         tubelog.debug('<<< native_exit(%x)' % status)
         self.write(struct.pack('II', NATIVE_EXIT, status))
@@ -100,6 +108,59 @@ class SandboxedProcess:
 
     def read(self, nbytes):
         return self.fd.read(nbytes)
+
+    def fstat(self, fd, addr):
+        ## XXX: Check if fd is open
+        (ret, st, errno) = self.vfs.fstat(fd)
+
+	# $ pahole a.out
+	# struct stat {
+	#        __dev_t                    st_dev;               /*     0     8 */
+	#        short unsigned int         __pad1;               /*     8     2 */
+	#  
+	#        /* XXX 2 bytes hole, try to pack */
+	#  
+	#        __ino_t                    st_ino;               /*    12     4 */
+	#        __mode_t                   st_mode;              /*    16     4 */
+	#        __nlink_t                  st_nlink;             /*    20     4 */
+	#        __uid_t                    st_uid;               /*    24     4 */
+	#        __gid_t                    st_gid;               /*    28     4 */
+	#        __dev_t                    st_rdev;              /*    32     8 */
+	#        short unsigned int         __pad2;               /*    40     2 */
+	#  
+	#        /* XXX 2 bytes hole, try to pack */
+	#  
+	#        __off_t                    st_size;              /*    44     4 */
+	#        __blksize_t                st_blksize;           /*    48     4 */
+	#        __blkcnt_t                 st_blocks;            /*    52     4 */
+	#        struct timespec            st_atim;              /*    56     8 */
+	#        /* --- cacheline 1 boundary (64 bytes) --- */
+	#        struct timespec            st_mtim;              /*    64     8 */
+	#        struct timespec            st_ctim;              /*    72     8 */
+	#        long unsigned int          __unused4;            /*    80     4 */
+	#        long unsigned int          __unused5;            /*    84     4 */
+	#  
+	#        /* size: 88, cachelines: 2 */
+	#        /* sum members: 84, holes: 2, sum holes: 4 */
+	#        /* last cacheline: 24 bytes */
+	# };	/* definitions: 1 */
+	#  
+	# struct timespec {
+	#        __time_t                   tv_sec;               /*     0     4 */
+	#        long int                   tv_nsec;              /*     4     4 */
+	#  
+	#        /* size: 8, cachelines: 1 */
+	#        /* last cacheline: 8 bytes */
+	# };	/* definitions: 1 */
+
+        st_buf = struct.pack('Q xxxx IIIIIQ xxxx III QQQ xxxxxxxx', 
+                             st.st_dev, st.st_ino,   st.st_mode, st.st_nlink, st.st_uid, 
+                             st.st_gid, st.st_rdev, st.st_size, st.st_blksize, st.st_blocks,
+                             st.st_atime, st.st_mtime, st.st_ctime)
+
+        tubelog.debug('<<< stat buffer')
+        self.poke_memory(addr, st_buf)
+        self.op_retval(ret, errno)
     
 class TrustedProcess:
     def __init__(self):

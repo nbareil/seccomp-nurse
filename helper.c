@@ -3,6 +3,7 @@
 #include <errno.h>
 
 #include "helper.h"
+#include "common.h"
 
 struct memory_op_msg {
 	__u32 addr;
@@ -20,69 +21,52 @@ ssize_t peek_asciiz_request(const int fd, const char *start) {
 	return write(fd, start, i);
 }
 
-ssize_t poke_memory_request(const int fd, const char request[], const size_t reqlen) {
-	struct memory_op_msg *req;
+ssize_t poke_memory_request(const int fd, const struct memory_op_msg * req) {
+	return fxread(fd, req->addr, req->len);
+}
 
-	if (reqlen < sizeof(*req))
-		return -1;
-
-	req = (struct memory_op_msg *)&request;
+ssize_t peek_memory_request(const int fd, const struct memory_op_msg * req) {
 	return write(fd, req->addr, req->len);
 }
 
-ssize_t peek_memory_request(const int fd, const char request[], const size_t reqlen) {
-	struct memory_op_msg *req;
-
-	if (reqlen < sizeof(*req))
-		return -1;
-
-	req = (struct memory_op_msg *)&request;
-	return read(fd, req->addr, req->len);
-}
-
-enum {
-	DO_SYSCALL = 1,
-	PEEK_ASCIIZ,
-	PEEK_MEMORY,
-	POKE_MEMORY,
-	RETVAL,
-	NATIVE_EXIT,
-};
-
 int wait_for_orders(const int fd) {
+        struct memory_op_msg req;
 	int msgtype;
 	char buf[512];
 	ssize_t ret = -1;
 	char *addr;
 
 	while (1) {
-		ret = read(fd, &msgtype, sizeof msgtype);
-		if (ret < 0) {
-			perror("read()");
-			return -1;
-		}
-
-		if (ret != sizeof msgtype)
-			return -1;
+		fxread(fd, &msgtype, sizeof msgtype);
 	
 		switch (msgtype) {
 		case PEEK_ASCIIZ:
-			read(fd, &addr, sizeof addr);
+			fxread(fd, &addr, sizeof addr);
 			peek_asciiz_request(fd, addr);
 			break;
 
+                case PEEK_MEMORY:
+			ret = fxread(fd, &req, sizeof req);
+			peek_memory_request(fd, &req);
+                        break;
+
+                case POKE_MEMORY:
+			ret = fxread(fd, &req, sizeof req);
+			poke_memory_request(fd, &req);
+                        break;
+
 		case RETVAL:
-			read(fd, &ret, sizeof ret);
-			read(fd, &errno, sizeof errno);
+			fxread(fd, &ret, sizeof ret);
+			fxread(fd, &errno, sizeof errno);
 			return ret;
 
 		case NATIVE_EXIT:
-			read(fd, &ret, sizeof ret);
+			fxread(fd, &ret, sizeof ret);
 			_exit(ret);
 			break;
 
 		default:
-			printf("Unknown message type %x\n", msgtype);
+			ERROR("Unknown message type %x\n", msgtype);
 			break;
 		}
 	}

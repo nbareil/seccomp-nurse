@@ -1,5 +1,21 @@
 import os, select
 from errno import *
+# from ctypes import *
+
+# class Stat(ctypes.Structure):
+#     _fields_ = [ ('st_dev', c_ulonglong),
+#                  ('st_ino', c_ulong),
+#                  ('st_mode', c_uint),
+#                  ('st_nlink', c_uint),
+#                  ('st_uid', c_uint),
+#                  ('st_gid', c_uint),
+#                  ('st_rdev', c_ulonglong),
+#                  ('st_size', c_long),
+#                  ('st_blksize', c_long),
+#                  ('st_blocks', c_long),
+#                  ('st_atime', c_long),
+#                  ('st_mtime', c_long),
+#                  ('st_ctime', c_long) ]
 
 class VfsManager(object):
     def __init__(self, nextfd=-1, root='/tmp'):
@@ -69,6 +85,17 @@ class VfsManager(object):
                         if b in rlist and a in wlist:
                             os.write(a, os.read(b, 512))
         return False
+
+    def fstat(self, fd):
+        try:
+            st = os.fstat(fd)
+            ret = 0
+            errno = 0
+        except Exception, e:
+            st  = None
+            ret = -1
+            errno = e.errno
+        return (ret, st, errno)
 
 if __name__ == "__main__":
     import doctest

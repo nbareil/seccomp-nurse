@@ -2,8 +2,8 @@
 
 CFLAGS=-O2 -Wall -w -Wextra
 
-libgs.so.1.0.1: dlmalloc.o mm.o helper.o jail.o inject.o
-	gcc -shared -WI,soname,libgs.so.1 -o libgs.so.1.0.1 dlmalloc.o mm.o helper.o jail.o inject.o -lc -ldl
+libgs.so.1.0.1: dlmalloc.o common.o mm.o helper.o jail.o inject.o
+	gcc -shared -WI,soname,libgs.so.1 -o libgs.so.1.0.1 dlmalloc.o common.o mm.o helper.o jail.o inject.o -lc -ldl
 
 dlmalloc.o:
 	$(CC) $(CFLAGS) -DMSPACES=1 -DUSE_DL_PREFIX=1 -DONLY_MSPACES=1 -c $(@:.o=.c)

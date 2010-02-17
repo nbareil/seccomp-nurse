@@ -1,5 +1,4 @@
-
-I got SECCOMPed and all I got was theses syscalls: read, write, sigreturn and _exit.
+seccomp-nurse
 
 * System calls
 *** Processor implementation
@@ -19,9 +18,9 @@ I got SECCOMPed and all I got was theses syscalls: read, write, sigreturn and _e
   instruction) which is trapped by the kernel and then processed.
 
   It was the most efficient way until the Pentium 4, after that, it
-  became the slowest mechanism available (XXX, give the reference to
-  the benchmark on LKML). The best method became the =sysenter/sysexit=
-  instructions on =x86_32= which has the same usage than =int $0x80=:
+  became the slowest mechanism available. The best method became the
+  =sysenter/sysexit= instructions on =x86_32= which has the same usage
+  than =int $0x80=:
 
 #+BEGIN_src asm
   mov $1, %eax   ;; __NR_exit = 1
@@ -123,7 +122,7 @@ bfafd000-bfb12000 rw-p 00000000 00:00 0          [stack]
 
   The implementation of the sysenter instruction is in
   =arch/x86/vdso/vdso32/sysenter.S=. The routine called by the libc
-  (with the =call *%gs:0x10=) is named =__kernel_vsyscall= :
+  (with the =call *%gs:0x10=) is named =__kernel_vsyscall=:
 
 #+BEGIN_src asm
   __kernel_vsyscall:
@@ -163,7 +162,7 @@ VDSO32_SYSENTER_RETURN: /* Symbol used by sysenter.c via vdso32-syms.h */
   =VDSO32_SYSENTER_RETURN= routine.
 
 * SECCOMP
-*** Introduction
+*** Sandboxing technology?
 
   SECCOMP is a Linux-only feature introduced in 2.6.23 (2005) by
   Andrea Arcangeli, initially designed for grid computing
@@ -178,8 +177,6 @@ VDSO32_SYSENTER_RETURN: /* Symbol used by sysenter.c via vdso32-syms.h */
   The security warranty here is pretty strong: the only way to evade
   the protection is to use file descriptors already opened or access
   to shared memory.
-
-*** Purpose
 
   SECCOMP is the perfect solution for a sandbox: the attack surface of
   the kernel is really minimal. For the record, in the whole kernel security
