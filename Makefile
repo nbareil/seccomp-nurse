@@ -2,7 +2,7 @@
 
 CFLAGS=-O2 -Wall -w -Wextra
 
-gs: dlmalloc.o mm.o helper.o jail.o inject.o
+libgs.so.1.0.1: dlmalloc.o mm.o helper.o jail.o inject.o
 	gcc -shared -WI,soname,libgs.so.1 -o libgs.so.1.0.1 dlmalloc.o mm.o helper.o jail.o inject.o -lc -ldl
 
 dlmalloc.o:
