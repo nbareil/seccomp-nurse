@@ -25,7 +25,8 @@ void syscall_proxy(void) {
 	     "movl %%edx, 16(%%eax)\n\t"
 	     "movl %%esi, 20(%%eax)\n\t"
 	     "movl %%edi, 24(%%eax)\n\t"
-	     "movl %%ebp, 28(%%eax)\n\t"
+             "movl (%%ebp), %%ebx\n" // gcc prologue pushed ebp
+	     "movl %%ebx, 28(%%eax)\n\t"
 	     :: "a" (buf) );
 
 	write(controlfd, buf, sizeof buf);
@@ -33,10 +34,10 @@ void syscall_proxy(void) {
         asm("movl %0, %%eax\n" : : "m" (ret));
 }
 
+void (*syscall_proxy_addr)(void) = syscall_proxy;
 void handler(void) {
-	void (*syscall_proxy_addr)(void) = syscall_proxy;
-
-	asm("cmpl $4, %%eax\n\t"
+	asm("movl (%%ebp), %%ebp\n" // ignore the gcc prologue
+            "cmpl $4, %%eax\n\t"
 	    "je do_syscall\n\t"
 
 	    "cmpl $3, %%eax\n\t"
@@ -58,8 +59,6 @@ void handler(void) {
 	    : /* output */
 	    : "m" (syscall_proxy_addr),
 	      "m" (real_handler));
-
-	nsyscalls++;
 }
 
 static void hijack_vdso_gate(void) {
