@@ -1,3 +1,7 @@
+#ifndef __MM_H
+
+#define __MM_H
+
 #define MSPACES 1
 #define ONLY_MSPACES 1
 #define USE_DL_PREFIX 1
@@ -22,3 +26,5 @@ void *(*old_memalign_hook)(size_t, size_t, __const void *);
 static void my_malloc_init(void);
 
 #define XCHANGE_VALUE(a, b) do { typeof(a) c = a; a = b; b = c; } while (0);
+
+#endif

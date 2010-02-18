@@ -5,6 +5,7 @@ enum {
 	POKE_MEMORY,
 	RETVAL,
 	NATIVE_EXIT,
+        GET_MEM_POOL,
 };
 
 static int controlfd = -1;

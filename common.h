@@ -1,3 +1,6 @@
+#ifndef __COMMON_H
+#define __COMMON_H
+
 #include <stdio.h>
 
 #define AUDIT(x, args...) do { fprintf(stderr, "AUDIT: " x, ##args); } while (0)
@@ -9,3 +12,4 @@
 
 size_t xread(int fd, void *buf, size_t count);
 size_t fxread(int fd, void *buf, size_t count);
+#endif
