@@ -97,6 +97,9 @@ class VfsManager(object):
             errno = e.errno
         return (ret, st, errno)
 
+    def close(self, fd):
+        return (0, 0,)
+
 if __name__ == "__main__":
     import doctest
     doctest.testmod()

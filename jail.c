@@ -149,14 +149,14 @@ void link_sockets(const char *dir, int last, unsigned int n) {
 			ok = 0;
 
 			if (connect(s, (struct sockaddr *) &uaddr, sizeof(uaddr))) {
-				if (errno == ENOENT || errno == ECONNREFUSED)
+				if (errno == ENOENT || errno == ECONNREFUSED) {
+                                        sleep(0.1);
 					continue;
-				else
+				} else
 					PERROR("connect()");
 			}
 
 			ok = 1;
-			sleep(0.1);
 		} while (!ok);
 	}
 }

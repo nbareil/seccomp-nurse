@@ -4,6 +4,7 @@
 
 #include "helper.h"
 #include "common.h"
+#include "mm.h"
 
 struct memory_op_msg {
 	__u32 addr;
@@ -63,6 +64,11 @@ int wait_for_orders(const int fd) {
 		case NATIVE_EXIT:
 			fxread(fd, &ret, sizeof ret);
 			_exit(ret);
+			break;
+
+                case MEMORY_POOL:
+			DEBUGP("big_memory_pool = %#p\n", big_memory_pool);
+			write(fd, &big_memory_pool, sizeof big_memory_pool);
 			break;
 
 		default:

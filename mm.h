@@ -1,5 +1,4 @@
 #ifndef __MM_H
-
 #define __MM_H
 
 #define MSPACES 1
@@ -8,6 +7,11 @@
 #define DEBUG 1
 
 #include "dlmalloc.h"
+
+#include <sys/mman.h>
+#ifndef MAP_HUGETLB
+#   define MAP_HUGETLB 0 /* it's only available since 2.6.32 */
+#endif
 
 extern void (*__after_morecore_hook)(void);
 extern void (*__malloc_initialize_hook) (void);
@@ -26,5 +30,8 @@ void *(*old_memalign_hook)(size_t, size_t, __const void *);
 static void my_malloc_init(void);
 
 #define XCHANGE_VALUE(a, b) do { typeof(a) c = a; a = b; b = c; } while (0);
+
+extern mspace mm;
+extern void *big_memory_pool;
 
 #endif
