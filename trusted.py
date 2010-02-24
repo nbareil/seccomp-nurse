@@ -134,7 +134,7 @@ class SandboxedProcess:
         ## XXX: Check if fd is owned by the sandbox
         ## XXX: Offset must be page aligned
 
-        if not self.vm.pool:
+        if not self.vm.mm:
             self.vm.set_pool_addr(self.get_memory_pool())
         addr = self.vm.new_mapping(addr, length, prot, flags)
         if fd >= 0:
