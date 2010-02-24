@@ -21,15 +21,15 @@ void syscall_proxy(void) {
 	int wrote;
 
 	asm ("pushl %eax\n");
-	asm ("movl $1, (%%eax)\n\t"
+	asm ("movl $1, (%%eax)\n"
 	     "popl         4(%%eax)\n"
-	     "movl %%ebx,  8(%%eax)\n\t"
-	     "movl %%ecx, 12(%%eax)\n\t"
-	     "movl %%edx, 16(%%eax)\n\t"
-	     "movl %%esi, 20(%%eax)\n\t"
-	     "movl %%edi, 24(%%eax)\n\t"
-             "movl (%%ebp), %%ebx\n" // gcc prologue pushed ebp
-	     "movl %%ebx, 28(%%eax)\n\t"
+	     "movl %%ebx,  8(%%eax)\n"
+	     "movl %%ecx, 12(%%eax)\n"
+	     "movl %%edx, 16(%%eax)\n"
+	     "movl %%esi, 20(%%eax)\n"
+	     "movl %%edi, 24(%%eax)\n"
+             "movl (%%ebp), %%ebx\n" // gcc prologue pushed ebp, and I want its initial value
+	     "movl %%ebx, 28(%%eax)\n"
 	     :: "a" (buf) );
 
 	write(controlfd, buf, sizeof buf);
@@ -40,24 +40,24 @@ void syscall_proxy(void) {
 void (*syscall_proxy_addr)(void) = syscall_proxy;
 void handler(void) {
 	asm("movl (%%ebp), %%ebp\n" // ignore the gcc prologue
-            "cmpl $4, %%eax\n\t"
-	    "je do_syscall\n\t"
+            "cmpl $4, %%eax\n"
+	    "je do_syscall\n"
 
-	    "cmpl $3, %%eax\n\t"
-	    "je do_syscall\n\t"
+	    "cmpl $3, %%eax\n"
+	    "je do_syscall\n"
 
-	    "cmpl $0xfc, %%eax\n\t"
+	    "cmpl $0xfc, %%eax\n"
             "jne wrapper\n"
             "movl $1, %%eax\n"
-	    "jmp do_syscall\n\t"
+	    "jmp do_syscall\n"
 
-	    "wrapper:\n\t"
-	    "			call *%0\n\t"
-	    "			jmp out\n\t"
+	    "wrapper:\n"
+	    "			call *%0\n"
+	    "			jmp out\n"
 
-	    "do_syscall:\n\t"
-	    "			call *%1\n\t"
-	    "out:		nop\n\t"
+	    "do_syscall:\n"
+	    "			call *%1\n"
+	    "out:		nop\n"
 
 	    : /* output */
 	    : "m" (syscall_proxy_addr),
@@ -65,11 +65,11 @@ void handler(void) {
 }
 
 static void hijack_vdso_gate(void) {
-	asm("mov %%gs:0x10, %%ebx\n\t"
-	    "mov %%ebx, %0\n\t"
+	asm("mov %%gs:0x10, %%ebx\n"
+	    "mov %%ebx, %0\n"
 
-	    "mov %1, %%ebx\n\t"
-	    "mov %%ebx, %%gs:0x10\n\t"
+	    "mov %1, %%ebx\n"
+	    "mov %%ebx, %%gs:0x10\n"
 
 	    : "=m" (real_handler)
 	    : "r" (handler)
