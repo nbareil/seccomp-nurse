@@ -17,11 +17,17 @@ from errno import *
 #                  ('st_mtime', c_long),
 #                  ('st_ctime', c_long) ]
 
+import logging
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(logging.Formatter("%(name)15.15s %(levelname)5s: %(message)s"))
+vfslog = logging.getLogger("sandbox.vfs")
+vfslog.addHandler(console_handler)
+vfslog.setLevel(-1)
+
 class VfsManager(object):
-    def __init__(self, nextfd=-1, root='/tmp'):
+    def __init__(self, lowest_fd, highest_fd, root='/tmp'):
         self.root=root
-        self.nextfd = nextfd
-        self.fd_bridges = []
+        self.bridge = DescriptorBridger(lowest_fd, highest_fd)
 
     def check_acl(self, path, mode):
         return path.startswith(self.root)
@@ -48,57 +54,102 @@ class VfsManager(object):
         if not self.check_acl(path, perms):
             return (-1, EPERM)
         ### XXX cas ou il faille creer le fichier
+        import time
+        time.sleep(2)
         return self.open_dup(path, perms, mode)
 
     def open_dup(self, filename, perms, mode):
         try:
-            fd = os.open(filename, perms)
-        except IOError, e:
+            local = os.open(filename, perms)
+        except OSError, e:
             return (-1, e.errno)
-        dupfd = self.nextfd
-        self.fd_bridges.append((fd, dupfd))
-        self.nextfd += 1 ####  XXX: We need to verify +1
-        return (dupfd+1, 0) #### +1 because the untrusted has an offset of -1
+        remote = self.bridge.link(local)
+        return (remote, 0)
 
-    def select_loop(self, controlfd):
-        while True:
-            fd_flat=[]
-            for fdtuple in self.fd_bridges:
-                fd_flat += list(fdtuple)
-            rfd_flat = fd_flat + [controlfd]
-            (rlist, wlist, xlist) = select.select(rfd_flat, fd_flat, [], 30)
-            if rlist:
-                # print rlist
-                if controlfd in rlist:
-                    return True
-                else:
-                    for a,b in self.fd_bridges:
-                        if a in rlist and b in wlist:
-                            buf = os.read(a, 512)
-                            if not buf:
-                                ### XXX: remove the file descriptor
-                                self.fd_bridges=[]
-                                os.close(a)
-                                os.close(b)
-                            else:
-                                os.write(b, buf)
-                        if b in rlist and a in wlist:
-                            os.write(a, os.read(b, 512))
-        return False
-
-    def fstat(self, fd):
+    def fstat(self, remote):
         try:
-            st = os.fstat(fd)
+            local = self.bridge.get(remote)
+        except KeyError:
+            vfslog.error('%d: no such file descriptor' % remote)
+            return (0xffffffff, None, EBADF)
+        try:
+            st = os.fstat(local)
             ret = 0
             errno = 0
         except Exception, e:
+            vfslog.error('os.fstat(%d) failed: %s' % (local, e.errno[1]))
             st  = None
-            ret = -1
+            ret = 0xffffffff
             errno = e.errno
         return (ret, st, errno)
 
     def close(self, fd):
         return (0, 0,)
+
+bridgelog = logging.getLogger("sandbox.bridge")
+bridgelog.addHandler(console_handler)
+bridgelog.setLevel(-1)
+
+class DescriptorBridger:
+    def __init__(self, minimum, maximum):
+        self.descriptors = {}
+        self.at_eof      = []
+        self.min    = minimum
+        self.max    = maximum
+
+    def link(self, local):
+        remote = 0
+        i=self.min
+        while not remote and i <= self.max:
+            if not i in self.descriptors:
+                remote = i
+                self.register(local, remote)
+            i += 1
+        return remote
+
+    def register(self, local, remote):
+        bridgelog.debug('register(%d, %d)' % (local, remote))
+        self.descriptors[local] = remote
+        self.descriptors[remote] = local
+
+    def unregister(self, local):
+        bridgelog.debug('unregistering(%d)' % local)
+        remote = self.descriptors[local]
+        bridgelog.debug(' %d,%d removed' % (local, remote))
+        del(self.descriptors[remote])
+        del(self.descriptors[local])
+
+    def get(self, i):
+        return self.descriptors[i]
+
+    def flat(self):
+        return filter(lambda x: x not in self.at_eof,
+                      self.descriptors.keys())
+
+    def run(self, control):
+        while True:
+            watch = self.flat() + [control]
+            (rlist, wlist, xlist) = select.select(watch, watch, [], 30)
+
+            if not rlist:
+                continue
+
+            if control in rlist:
+                return True
+
+            for a in rlist:
+                b = self.get(a)
+                buf = os.read(a, 512)
+                if not buf:
+                    # local hits EOF, remove it from select
+                    self.at_eof += [a]
+                    os.write(b, '')
+                else:
+                    if b in wlist:
+                        os.write(b, buf)
+                    else:
+                        bridgelog.info('%d not ready for write' % b)
+        return False
 
 if __name__ == "__main__":
     import doctest

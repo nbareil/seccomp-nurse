@@ -5,6 +5,9 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <errno.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #include "common.h"
 #include "jail.h"
@@ -116,17 +119,21 @@ void bind_sockets(const char *dir, int last, unsigned int n) {
 		if (fd != prev+1)
 			ERROR("accept: Not linear! fd=%d needed but got fd=%d\n", prev+1, fd);
 
-		if (controlfd == -1)
+		if (controlfd == -1) {
 			controlfd = fd;
+			DEBUGP("Master socket is %d\n", controlfd);
+                }
 		prev=fd;
 	}
 }
 
-void link_sockets(const char *dir, int last, unsigned int n) {
+void link_sockets(const char *dir, unsigned int n) {
 	unsigned int i, ok;
 	struct sockaddr_un uaddr;
 	size_t ret;
 	int s, prev;
+
+        prev = open("/dev/null", O_RDONLY);
 
 	uaddr.sun_family = AF_UNIX;
 	ret = snprintf(uaddr.sun_path, sizeof(uaddr.sun_path),
@@ -135,7 +142,6 @@ void link_sockets(const char *dir, int last, unsigned int n) {
 	if (ret >= sizeof(uaddr.sun_path))
 		ERROR("Unix socket's pathname is truncated.\n");
 
-	prev = last;		/* last file descriptor open */
 	for (i = 0 ; i < n ; i++) {
 		s = socket(AF_UNIX, SOCK_STREAM, 0);
 		if (!s)
@@ -190,7 +196,7 @@ void start_trusted_process(const char *socketdir, pid_t pid)
 	tmp[sizeof tmp - 1] = '\0';
 	new_argv[1] = tmp;
 
-	link_sockets(socketdir, STDERR_FILENO, 0x10 /* XXX */);
+	link_sockets(socketdir, 0x10 /* XXX */);
 	execve(MASTER_DAEMON, new_argv, new_env);
 	PERROR("execve()");
 }

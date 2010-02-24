@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 
-import struct, os
+import struct, os, sys
 import logging
 
 import vfs, vm
@@ -44,10 +44,10 @@ NATIVE_EXIT = 6
 GET_MEMORY_POOL  = 7
 
 class SandboxedProcess:
-    def __init__(self, fd=-1):
+    def __init__(self, fd, nfd):
         self.fd  = os.fdopen(fd, 'w+')
-        self.vfs = vfs.VfsManager(root='/', nextfd=fd+1)
-        self.vm  = vm.VirtualMemory(0x1000)
+        self.vfs = vfs.VfsManager(fd+1, fd+1+nfd, root='/')
+        self.vm  = vm.VirtualMemory(0x01000000)
 
     def syscall_request(self):
         sandboxlog.info('syscall request ringing...')
@@ -74,11 +74,7 @@ class SandboxedProcess:
         u_mode  = reg.edx
         filename = self.peek_asciiz(u_ptr)
         sandboxlog.debug('+++ open("%s", %x, %x)' % (filename, u_perms, u_mode))
-        (fd, errno) = self.vfs.open(filename, u_perms, u_mode)
-        if isinstance(fd, file):
-            ret = fd.fileno()
-        else:
-            ret = fd
+        (ret, errno) = self.vfs.open(filename, u_perms, u_mode)
         self.op_retval(ret, errno)
 
     def op_retval(self, ret, errno=0):
@@ -165,8 +161,9 @@ class SandboxedProcess:
 
 class TrustedProcess:
     def __init__(self):
-        self.sandbox = SandboxedProcess(fd=3)
-        self.untrustedfd = 3
+        numdescriptors = int(sys.argv[1])
+        self.master_socket = 4
+        self.sandbox = SandboxedProcess(self.master_socket, numdescriptors)
 
     def dispatcher(self, rawtype):
         msgtype = struct.unpack('I', rawtype)[0]
@@ -179,9 +176,9 @@ class TrustedProcess:
 
     def run(self):
         while True:
-            if not self.sandbox.vfs.select_loop(self.untrustedfd):
+            if not self.sandbox.vfs.bridge.run(self.master_socket):
                 raise Exception('Select_loop failed!')
-            buf = os.read(self.untrustedfd, 4)
+            buf = os.read(self.master_socket, 4)
             if not buf:
                 break
             self.dispatcher(buf)
