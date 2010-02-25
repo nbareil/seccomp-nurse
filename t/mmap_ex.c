@@ -28,7 +28,6 @@ main(int argc, char *argv[])
     if (fd == -1)
         handle_error("open");
 
-    printf("&sb = %p\n", &sb);
     ret = fstat(fd, &sb);
     if (ret == -1) {          /* To obtain file size */
         printf("********************* Alarme! %d\n", errno);
