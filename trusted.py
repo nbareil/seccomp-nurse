@@ -2,6 +2,7 @@
 
 import struct, os, sys
 import logging
+from errno import *
 
 import vfs, vm
 
@@ -68,7 +69,7 @@ class SandboxedProcess:
         elif mm.eax == 0xfc:
             self.exit(mm.ebx)
         else:
-            self.op_retval(-1, 38) # Function not implemented
+            self.op_retval(-1, ENOSYS) # Function not implemented
 
     def open(self, reg):
         u_ptr = reg.ebx
