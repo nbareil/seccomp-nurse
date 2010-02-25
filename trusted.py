@@ -62,7 +62,7 @@ class SandboxedProcess:
         elif mm.eax == 0x5b:
             self.munmap(mm.ebx, mm.ecx)
         elif mm.eax == 0xc5:
-            self.fstat(mm.ebx, mm.ecx)
+            self.fstat64(mm.ebx, mm.ecx)
         elif mm.eax == 0xc0:
             self.mmap(mm.ebx, mm.ecx, mm.edx, mm.esi, mm.edi, mm.ebp)
         elif mm.eax == 0xfc:
@@ -73,7 +73,7 @@ class SandboxedProcess:
         u_perms = reg.ecx
         u_mode  = reg.edx
         filename = self.peek_asciiz(u_ptr)
-        sandboxlog.debug('+++ open("%s", %x, %x)' % (filename, u_perms, u_mode))
+        sandboxlog.debug('+++ open("%s", %x, %#x)' % (filename, u_perms, u_mode))
         (ret, errno) = self.vfs.open(filename, u_perms, u_mode)
         self.op_retval(ret, errno)
 
@@ -111,16 +111,43 @@ class SandboxedProcess:
         return self.fd.read(nbytes)
 
     def fstat(self, fd, addr):
-        sandboxlog.info('+++ fstat(%d, %#8x)' % (fd, addr))
+        pass
+
+    def fstat64(self, fd, addr):
+        sandboxlog.info('+++ fstat64(%d, %#8x)' % (fd, addr))
         ## XXX: Check if fd is open
         (ret, st, errno) = self.vfs.fstat(fd)
-        st_buf = struct.pack('Q xxxx IIIIIQ xxxx III QQQ xxxxxxxx', 
-                             st.st_dev, st.st_ino,   st.st_mode, st.st_nlink, st.st_uid, 
-                             st.st_gid, st.st_rdev, st.st_size, st.st_blksize, st.st_blocks,
-                             st.st_atime, st.st_mtime, st.st_ctime)
-
-        tubelog.debug('<<< stat buffer')
-        self.poke_memory(addr, st_buf)
+        if st:
+            st_buf = struct.pack(
+                #        #  struct stat64 {
+                'Q'    + #     unsigned long long      st_dev;
+                'xxxx' + #     unsigned char   __pad0[4];
+                'L'    + #     unsigned long   __st_ino;
+                'I'    + #     unsigned int    st_mode;
+                'I'    + #     unsigned int    st_nlink;
+                'L'    + #     unsigned long   st_uid;
+                'L'    + #     unsigned long   st_gid;
+                'Q'    + #     unsigned long long      st_rdev;
+                'xxxx' + #     unsigned char   __pad3[4];
+                'q'    + #     long long       st_size;
+                'L'    + #     unsigned long   st_blksize;
+                'Q'    + #     unsigned long long      st_blocks;
+                'L'    + #     unsigned long   st_atime;
+                'L'    + #     unsigned long   st_atime_nsec;
+                'L'    + #     unsigned long   st_mtime;
+                'I'    + #     unsigned int    st_mtime_nsec;
+                'L'    + #     unsigned long   st_ctime;
+                'L'    + #     unsigned long   st_ctime_nsec;
+                'Q',     #     unsigned long long      st_ino;
+                         #  };
+                st.st_dev, st.st_ino,
+                st.st_mode, st.st_nlink, st.st_uid, st.st_gid,
+                st.st_rdev, st.st_size,
+                st.st_blksize,
+                st.st_blocks,
+                int(st.st_atime), 0, int(st.st_mtime), 0, int(st.st_ctime), 0, st.st_ino)
+            #tubelog.debug('<<< stat buffer %s...' % st_buf.encode('hex'))
+            self.poke_memory(addr, st_buf)
         self.op_retval(ret, errno)
 
     def mmap(self, addr, length, prot, flags, fd, offset):

@@ -1,21 +1,5 @@
 import os, select
 from errno import *
-# from ctypes import *
-
-# class Stat(ctypes.Structure):
-#     _fields_ = [ ('st_dev', c_ulonglong),
-#                  ('st_ino', c_ulong),
-#                  ('st_mode', c_uint),
-#                  ('st_nlink', c_uint),
-#                  ('st_uid', c_uint),
-#                  ('st_gid', c_uint),
-#                  ('st_rdev', c_ulonglong),
-#                  ('st_size', c_long),
-#                  ('st_blksize', c_long),
-#                  ('st_blocks', c_long),
-#                  ('st_atime', c_long),
-#                  ('st_mtime', c_long),
-#                  ('st_ctime', c_long) ]
 
 import logging
 console_handler = logging.StreamHandler()
@@ -54,8 +38,6 @@ class VfsManager(object):
         if not self.check_acl(path, perms):
             return (-1, EPERM)
         ### XXX cas ou il faille creer le fichier
-        import time
-        time.sleep(2)
         return self.open_dup(path, perms, mode)
 
     def open_dup(self, filename, perms, mode):
