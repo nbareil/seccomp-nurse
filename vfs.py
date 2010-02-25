@@ -130,7 +130,10 @@ class DescriptorBridger:
                     if b in wlist:
                         os.write(b, buf)
                     else:
-                        bridgelog.info('%d not ready for write' % b)
+                        bridgelog.info('%d <-> %d not ready for write EOF=[%s] DESC=[%s]' % 
+                                       (a, b,
+                                        ', '.join(map(str, self.at_eof)),
+                                        ', '.join(map(str, self.descriptors))))
         return False
 
 if __name__ == "__main__":
