@@ -22,8 +22,6 @@ class Chunk:
             self.status = 'A'
             return self
         else:
-            print self.status
-            print '%d >= %d ' % (self.size, size)
             if self.next:
                 return self.next.find_freechunk(size)
         return None
