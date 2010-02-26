@@ -37,10 +37,12 @@ class VfsManager(object):
         path = os.path.realpath(filename)
         if not self.check_acl(path, perms):
             return (-1, EPERM)
-        ### XXX cas ou il faille creer le fichier
-        return self.open_dup(path, perms, mode)
+        self.security.open(filename, perms, mode)
+        untrustedfd = self.do_open(path, perms, mode)
+        self.security.register_descriptor(untrustedfd, filename)
+        return untrustedfd
 
-    def open_dup(self, filename, perms, mode):
+    def do_open(self, filename, perms, mode):
         try:
             local = os.open(filename, perms)
         except OSError, e:
@@ -49,6 +51,8 @@ class VfsManager(object):
         return (remote, 0)
 
     def fstat(self, remote):
+        if not self.security.fstat(remote):
+            return (-1, None, EPERM)
         try:
             local = self.bridge.get(remote)
         except KeyError:
@@ -66,7 +70,10 @@ class VfsManager(object):
         return (ret, st, errno)
 
     def close(self, fd):
-        return (0, 0,)
+        ret = (-1, 0)
+        if self.security.unregister_descriptor(fd):
+            ret =self.do_open(fd)
+        return ret
 
 bridgelog = logging.getLogger("sandbox.bridge")
 bridgelog.addHandler(console_handler)
