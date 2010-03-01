@@ -40,15 +40,15 @@ void syscall_proxy(void) {
 void (*syscall_proxy_addr)(void) = syscall_proxy;
 void handler(void) {
 	asm("movl (%%ebp), %%ebp\n" // ignore the gcc prologue
-            "cmpl $4, %%eax\n"
+            "cmpl " ivalue(__NR_write) ", %%eax\n"
 	    "je wrap_write\n"
 
-	    "cmpl $3, %%eax\n"
+	    "cmpl " ivalue(__NR_read) ", %%eax\n"
 	    "je wrap_read\n"
 
-	    "cmpl $0xfc, %%eax\n"
+	    "cmpl " ivalue(__NR_exit_group) ", %%eax\n"
 	    "jne wrapper\n"
-	    "movl $1, %%eax\n"
+	    "movl " ivalue(__NR_exit) ", %%eax\n"
 	    "jmp do_syscall\n"
 
 	    "wrapper:\n"
@@ -61,9 +61,8 @@ void handler(void) {
 	    "			call *%1\n"
 	    "			jmp out\n"
 
-
 	    "wrap_write:\n"
-	    "			cmp $4, %%ebx\n"
+	    "			cmp " ivalue(__NR_write) ", %%ebx\n"
 	    "			jle do_syscall\n"
 	    "			jmp wrapper\n"
 

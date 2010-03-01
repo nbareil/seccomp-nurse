@@ -3,6 +3,9 @@
 
 #include <stdio.h>
 
+#define xstr(x) "$"#x
+#define ivalue(x) xstr(x)
+
 #define AUDIT(x, args...) do { fprintf(stderr, "AUDIT: " x, ##args); } while (0)
 #define DEBUGP(x, args...) do { fprintf(stdout, "DEBUGP: " x, ##args);} while (0)
 #define WARNING(x, args...) do { fprintf(stderr, "WARNING: " x, ##args); } while (0)
@@ -12,4 +15,5 @@
 
 size_t xread(int fd, void *buf, size_t count);
 size_t fxread(int fd, void *buf, size_t count);
+
 #endif
