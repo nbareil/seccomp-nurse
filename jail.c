@@ -41,26 +41,39 @@ void (*syscall_proxy_addr)(void) = syscall_proxy;
 void handler(void) {
 	asm("movl (%%ebp), %%ebp\n" // ignore the gcc prologue
             "cmpl $4, %%eax\n"
-	    "je do_syscall\n"
+	    "je wrap_write\n"
 
 	    "cmpl $3, %%eax\n"
-	    "je do_syscall\n"
+	    "je wrap_read\n"
 
 	    "cmpl $0xfc, %%eax\n"
-            "jne wrapper\n"
-            "movl $1, %%eax\n"
+	    "jne wrapper\n"
+	    "movl $1, %%eax\n"
 	    "jmp do_syscall\n"
 
 	    "wrapper:\n"
-            "			pushl %%ecx\n"
+	    "			pushl %%ecx\n"
 	    "			call *%0\n"
-            "			popl %%ecx\n"
+	    "			popl %%ecx\n"
 	    "			jmp out\n"
 
 	    "do_syscall:\n"
 	    "			call *%1\n"
-	    "out:		nop\n"
+	    "			jmp out\n"
 
+
+	    "wrap_write:\n"
+	    "			cmp $4, %%ebx\n"
+	    "			jle do_syscall\n"
+	    "			jmp wrapper\n"
+
+	    "wrap_read:\n"
+            "			cmpl $4, %%ebx\n"   /* master socket? */
+            "			je do_syscall\n"
+            "			jmp wrapper\n"
+	    "			\n"
+
+	    "out:		nop\n"
 	    : /* output */
 	    : "m" (syscall_proxy_addr),
 	      "m" (real_handler));

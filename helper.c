@@ -54,7 +54,7 @@ int wait_for_orders(const int fd) {
                 case POKE_MEMORY:
 			ret = fxread(fd, &req, sizeof req);
 			poke_memory_request(fd, &req);
-                        break;
+			break;
 
 		case RETVAL:
 			fxread(fd, &ret, sizeof ret);

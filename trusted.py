@@ -6,18 +6,13 @@ from errno import *
 
 import vfs, vm
 
-mainlog = logging.getLogger("trusted")
-console_handler = logging.StreamHandler()
-console_handler.setFormatter(logging.Formatter("%(name)15.15s %(levelname)5s: %(message)s"))
-mainlog.addHandler(console_handler)
-sandboxlog = logging.getLogger("sandbox.action")
-tubelog = logging.getLogger("sandbox.tube")
-tubelog.addHandler(console_handler)
-sandboxlog.addHandler(console_handler)
+lvl = logging.DEBUG
+logging.basicConfig(level=lvl,
+                    format="%(name)15.15s %(levelname)5s: %(message)s")
 
-mainlog.setLevel(-1)
-tubelog.setLevel(-1)
-sandboxlog.setLevel(-1)
+mainlog    = logging.getLogger("trusted")
+sandboxlog = logging.getLogger("sandbox.action")
+tubelog    = logging.getLogger("sandbox.tube")
 
 class Memory:
     def __init__(self, regs):
@@ -42,7 +37,7 @@ PEEK_MEMORY = 3
 POKE_MEMORY = 4
 RETVAL      = 5
 NATIVE_EXIT = 6
-GET_MEMORY_POOL  = 7
+GET_MEMORY_POOL = 7
 
 class SandboxedProcess:
     def __init__(self, fd, nfd):
@@ -56,7 +51,12 @@ class SandboxedProcess:
         mm = Memory.parse(msg)
         sandboxlog.debug('>>> %s' % mm)
 
-        if mm.eax == 5:
+
+        if mm.eax == 3:
+            self.sys_read(mm.ebx, mm.ecx, mm.edx)
+        elif mm.eax == 3:
+            self.sys_write(mm.ebx, mm.ecx, mm.edx)
+        elif mm.eax == 5:
             self.open(mm)
         elif mm.eax == 6:
             self.close(mm.ebx)
@@ -82,8 +82,8 @@ class SandboxedProcess:
 
     def op_retval(self, ret, errno=0):
         tubelog.debug('<<< op_retval(%#x, %d)' % (ret,errno))
-        self.write(struct.pack('III', RETVAL, ret, errno))
-
+        self.write(struct.pack('III', RETVAL, ret & 0xffffffff, errno))
+        
     def peek_asciiz(self, ptr):
         tubelog.debug('<<< peek_asciiz(%#x)' % ptr)
         self.write(struct.pack('II', PEEK_ASCIIZ, ptr))
@@ -109,6 +109,18 @@ class SandboxedProcess:
         if forceflush:
             self.fd.flush()
         return ret
+
+    def sys_write(self, fd, addr, buflen):
+        pass
+
+    def sys_read(self, fd, addr, buflen):
+        tubelog.debug('+++ read(%d, %#x, %d)' % (fd, addr, buflen))
+        if self.vfs.is_at_eof(fd):
+            self.op_retval(0, 0)
+        else:
+            buf = self.vfs.read_handler(fd, buflen)
+            self.poke_memory(addr, buf)
+            self.op_retval(len(buf), 0)
 
     def read(self, nbytes):
         return self.fd.read(nbytes)

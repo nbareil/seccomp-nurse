@@ -1,22 +1,19 @@
 #! /usr/bin/env python
 
-import logging
-console_handler = logging.StreamHandler()
-console_handler.setFormatter(logging.Formatter("%(name)15.15s %(levelname)5s: %(message)s"))
-securitylog = logging.getLogger("sandbox.vfs")
-securitylog.addHandler(console_handler)
-securitylog.setLevel(-1)
+import logging, os
+securitylog = logging.getLogger("sandbox.security")
 
-class Security(object):
+class SecurityManager(object):
     def __init__(self, fs_root='/'):
         self.fs_root  = fs_root
-        self.fd_table = []
+        self.fd_table = {}
 
     def register_descriptor(self, fd, filename):
         if fd in self.fd_table:
             raise SecurityException('File descriptor %d already opened!' % fd)
-        securitylog.debug('Registering file descriptor %d associated to %s' % self.fd_table[fd])
         self.fd_table[fd] = filename
+        securitylog.debug('Registering file descriptor %d associated to %s' % (fd, filename))
+
 
     # Trying to close a not-opened-file-descriptor is not
     # fatal because daemons usually try to close every
@@ -32,7 +29,7 @@ class Security(object):
 
     def fstat(self, fd):
         ret = fd in self.fd_table
-        securitylog.info('Can fstat(%d)? %s' % ret)
+        securitylog.info('Can fstat(%d)? %s' % (fd, ret))
         return ret
 
     

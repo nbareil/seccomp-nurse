@@ -1,17 +1,17 @@
 import os, select
 from errno import *
+import security
 
 import logging
-console_handler = logging.StreamHandler()
-console_handler.setFormatter(logging.Formatter("%(name)15.15s %(levelname)5s: %(message)s"))
-vfslog = logging.getLogger("sandbox.vfs")
-vfslog.addHandler(console_handler)
-vfslog.setLevel(-1)
+
+vfslog    = logging.getLogger("sandbox.vfs")
+bridgelog = logging.getLogger("sandbox.bridge")
 
 class VfsManager(object):
     def __init__(self, lowest_fd, highest_fd, root='/tmp'):
         self.root=root
         self.bridge = DescriptorBridger(lowest_fd, highest_fd)
+        self.security = security.SecurityManager()
 
     def check_acl(self, path, mode):
         return path.startswith(self.root)
@@ -39,7 +39,7 @@ class VfsManager(object):
             return (-1, EPERM)
         self.security.open(filename, perms, mode)
         untrustedfd = self.do_open(path, perms, mode)
-        self.security.register_descriptor(untrustedfd, filename)
+        self.security.register_descriptor(untrustedfd[0], filename)
         return untrustedfd
 
     def do_open(self, filename, perms, mode):
@@ -72,12 +72,19 @@ class VfsManager(object):
     def close(self, fd):
         ret = (-1, 0)
         if self.security.unregister_descriptor(fd):
-            ret =self.do_open(fd)
+            pass
         return ret
 
-bridgelog = logging.getLogger("sandbox.bridge")
-bridgelog.addHandler(console_handler)
-bridgelog.setLevel(-1)
+    def is_at_eof(self, remote):
+        local = self.bridge.get(remote)
+        ret = local in self.bridge.at_eof
+        if not ret:
+            vfslog.debug('File descriptor %d/%d is at EOF' % (remote, local))
+        return ret
+
+    def read_handler(self, remote, buflen):
+        local = self.bridge.get(remote)
+        return os.read(local, buflen)
 
 class DescriptorBridger:
     def __init__(self, minimum, maximum):
@@ -111,36 +118,15 @@ class DescriptorBridger:
     def get(self, i):
         return self.descriptors[i]
 
-    def flat(self):
-        return filter(lambda x: x not in self.at_eof,
-                      self.descriptors.keys())
-
     def run(self, control):
         while True:
-            watch = self.flat() + [control]
-            (rlist, wlist, xlist) = select.select(watch, watch, [], 30)
-
+            watch = [control]
+            (rlist, wlist, xlist) = select.select(watch, [], [], 30)
             if not rlist:
                 continue
 
             if control in rlist:
                 return True
-
-            for a in rlist:
-                b = self.get(a)
-                buf = os.read(a, 512)
-                if not buf:
-                    # local hits EOF, remove it from select
-                    self.at_eof += [a]
-                    os.write(b, '')
-                else:
-                    if b in wlist:
-                        os.write(b, buf)
-                    else:
-                        bridgelog.info('%d <-> %d not ready for write EOF=[%s] DESC=[%s]' % 
-                                       (a, b,
-                                        ', '.join(map(str, self.at_eof)),
-                                        ', '.join(map(str, self.descriptors))))
         return False
 
 if __name__ == "__main__":
