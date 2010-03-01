@@ -173,13 +173,13 @@ VDSO32_SYSENTER_RETURN: /* Symbol used by sysenter.c via vdso32-syms.h */
 * SECCOMP
 *** Sandboxing technology?
 
-  SECCOMP is a Linux-only feature introduced in 2.6.23 (2005) by
-  Andrea Arcangeli, initially designed for grid computing
+  SECCOMP is a Linux feature introduced in 2.6.23 (2005) by
+  [[http://www.cpushare.com/blog/andrea/][Andrea Arcangeli]], initially designed for grid computing
   applications. The idea was to sell CPU times to the public by
   running untrusted binaries.
 
   When a process goes into SECCOMP mode, it can only do 4 syscalls:
-  read, write, _exit and sigreturn. The kernel will enforce this
+  =read=, =write=, =_exit= and =sigreturn=. The kernel will enforce this
   limitation by killing (by a SIGKILL signal) the process if an
   unauthorized system call is made.
 
@@ -187,19 +187,20 @@ VDSO32_SYSENTER_RETURN: /* Symbol used by sysenter.c via vdso32-syms.h */
   the protection is to use file descriptors already opened or access
   to shared memory.
 
-  SECCOMP is the perfect solution for a sandbox: the attack surface of
-  the kernel is really minimal. For the record, in the whole kernel security
-  history, no vulnerability were ever found in theses syscalls.
+  SECCOMP is the perfect solution for a sandbox because the kernel
+  attack surface is really small! For the record, in the whole kernel
+  security history, no vulnerability was ever found in theses
+  syscalls.
 
   The downside of this feature is its limitation! Once in SECCOMP
   mode, it is impossible to do anything except some
-  computations. Furthermore, the action of entering in SECCOMP mode is
-  voluntary: the program needs to issue itself a =prctl()= with
-  appropriate arguments. That means that the application needs to be
-  developed specifically.
+  arithmetics. Another SECCOMP problem is that the action of entering
+  in SECCOMP mode is voluntary: the program needs to issue itself a
+  =prctl()= call with appropriate arguments: that means the
+  application needs to be developed specifically.
 
   The purpose of a sandbox is to run untrusted binaries without
-  requiring modifications of the sources. Currently, there are two
+  requiring sources modifications. Currently, there are two
   main problems:
 
   - Enter in SECCOMP mode
@@ -207,19 +208,19 @@ VDSO32_SYSENTER_RETURN: /* Symbol used by sysenter.c via vdso32-syms.h */
   - Prevent the untrusted process from issuing system call
 
   Both problems need to be solved without requiring a
-  recompilation. This is what was investigated in this report.
+  recompilation. How to do it despite this constraint?
 
 *** Entering in SECCOMP mode
 
-  Basically, we need to inject a =prctl()= into a given process. The
-  best known method is to write directly into the memory of the
-  process by using the =ptrace()= interface.
+  Basically, we need to inject a call to =prctl()= into a given
+  process. The best known method is to write directly into the memory
+  of the process by using the =ptrace()= interface.
 
   Beside the evident problems of portability and the inherent
   difficulties of injecting instructions in a process, this solution
   was not investigated because of its hackish nature.
 
-  Instead, lets take a look at a simple C program:
+  Instead, let's take a look at a simple binary:
 
 #+BEGIN_src txt
 $ objdump -f a.out
@@ -229,8 +230,8 @@ EXEC_P, HAS_SYMS, D_PAGED
 start address 0x080482e0
 #+END_src
 
-  The entry point of the binary, 0x080482e0, is the =_start= routine
-  provided by the compiler.
+  The entry point of the binary, =0x080482e0=, is the =_start= routine
+  provided by the compiler and shown here:
 
 #+BEGIN_src asm
 080482e0 <_start>:
@@ -250,7 +251,7 @@ start address 0x080482e0
 #+END_src
 
  It initializes the stack and then calls the "init function" of the GNU
- libc which will eventually execute the =main()= function, at this
+ libc which will eventually execute the =main()= function. At this
  point, the program is effectively ran.
 
  The interesting property of this routine is how the libc function is
@@ -258,9 +259,9 @@ start address 0x080482e0
  that means the linker will have to resolve the symbol.
 
  Thanks to the =LD_PRELOAD= feature, it's possible to overload
- symbols. This is how we are issuing the =prctl()= call: by overriding
+ ELF symbols. This is how we are issuing the =prctl()= call: by overriding
  the =__libc_start_main= function and calling it on our own to be
- totally transparent.
+ totally transparent, here is how it's done:
 
 #+BEGIN_src c
 typedef int (*main_t)(int, char **, char **);
@@ -329,7 +330,8 @@ int wrap_main(int argc, char **argv, char **environ)
   using the PLT.
 
   There is still the option of modifying the memory with some
-  =ptrace()= calls or rewriting some bits of the binary file.
+  =ptrace()= calls or
+  [[http://c-skills.blogspot.com/2010/02/runtime-hot-patching-processes-wo.html][rewriting some memory mapping thanks to the method of Sebastien Krahmer presented in lasso]].
 
 *** Interception of syscalls
 
@@ -341,10 +343,10 @@ int wrap_main(int argc, char **argv, char **environ)
 
   Thus, we need to intercept the syscall before the kernel, process it
   if possible and emulate the kernel behavior. The interception of
-  syscalls is usually done with the =ptrace()= interface, the main
-  drawback of this method is the lack of debugging mean: because all
-  debuggers use =ptrace= and a process can only be traced once, that
-  means that each bug would be a nightmare.
+  syscalls is usually done, again, with the =ptrace()= interface, the
+  main drawback of this method is the lack of debugging mean: because
+  all debuggers use =ptrace= and a process can only be traced once,
+  that means that each bug would be a nightmare.
 
   Furthermore, the =ptrace= interface is known to be crippled and a
   lot of security bugs have been found, fortunately, this was from the
@@ -352,25 +354,25 @@ int wrap_main(int argc, char **argv, char **environ)
   harm the tracer process.
 
   Another solution was investigated based on the analysis of the
-  syscall handling in the Libc. We saw in the previous section that
-  the syscall was done by making a =call *%gs:0x10=.
+  syscall handling in the Libc. We saw in my [[http://justanothergeek.chdir.org/2010/02/how-system-calls-work-on-recent-linux.html][previous post "How system calls work on Linux?"]]
+  that the GNU Libc was making syscalls by doing a =call *%gs:0x10=.
 
 ***** Hijacking VDSO 
 
   In order to intercept (legit) sycalls, we need to intercept the
   previous =call= instruction. This is easy, we have to overwrite the
-  pointer stored at the address =*%gs:0x10= redirecting to our own
-  function.
+  pointer stored at the address =%gs:0x10= and redirect the process to
+  our own function.
 
   This what we do immediatly after turning on SECCOMP:
 
 #+BEGIN_src c
 static void hijack_vdso_gate(void) {
-	asm("mov %%gs:0x10, %%ebx\n\t"
-	    "mov %%ebx, %0\n\t"
+	asm("mov %%gs:0x10, %%ebx\n"
+	    "mov %%ebx, %0\n"
 
-	    "mov %1, %%ebx\n\t"
-	    "mov %%ebx, %%gs:0x10\n\t"
+	    "mov %1, %%ebx\n"
+	    "mov %%ebx, %%gs:0x10\n"
 
 	    : "=m" (real_handler)
 	    : "r" (handler)
@@ -384,8 +386,8 @@ static void hijack_vdso_gate(void) {
 ***** Demultiplexing syscalls
 
   The purpose of the handler is to look at the syscall requested, see
-  if we need to honor it ourself or let the original libc's handler
-  runned (which was saved in a global variable).
+  if we need to honor it ourself (because it's a forbidden syscall) or
+  run the original VDSO's function.
 
   Our handler needs to be carefully written in order to not mess up
   with the registers: our function *must not* modify any
@@ -393,33 +395,35 @@ static void hijack_vdso_gate(void) {
 
 #+BEGIN_src c
 void handler(void) {
+        /* syscall_proxy() is the "forbidden syscalls" handler */
 	void (*syscall_proxy_addr)(void) = syscall_proxy;
 
-	asm("cmpl $4, %%eax\n\t"
-	    "je do_syscall\n\t"
+	asm("cmpl $4, %%eax\n"
+	    "je do_syscall\n"
 
-	    "cmpl $3, %%eax\n\t"
-	    "je do_syscall\n\t"
+	    "cmpl $3, %%eax\n"
+	    "je do_syscall\n"
 
-	    "cmpl $0xfc, %%eax\n\t"
+	    "cmpl $0xfc, %%eax\n"
             "jne wrapper\n"
 
             "movl $1, %%eax\n"
-	    "jmp do_syscall\n\t"
+	    "jmp do_syscall\n"
 
-	    "wrapper:\n\t"
-	    "			call *%0\n\t"
-	    "			jmp out\n\t"
+	    "wrapper:\n"
+	    "			call *%0\n"
+	    "			jmp out\n"
 
-	    "do_syscall:\n\t"
-	    "			call *%1\n\t"
-	    "out:		nop\n\t"
+	    "do_syscall:\n"
+	    "			call *%1\n"
+	    "out:		nop\n"
 
 	    : /* output */
 	    : "m" (syscall_proxy_addr),
-	      "m" (real_handler));
-
-	nsyscalls++;
+	      "m" (real_handler)); /* real_handler is the original
+                                    * VDSO function, performing 
+                                    * effectively the syscall 
+                                    */
 }
 #+END_src
 
@@ -448,3 +452,4 @@ void handler(void) {
 
   Behing theses primitives, the whole logic is done in the trusted
   process.
+  
