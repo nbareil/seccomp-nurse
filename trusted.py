@@ -98,14 +98,16 @@ class SandboxedProcess:
         length = len(buf)
         tubelog.debug('<<< poke_memory(%#x, "...") len=%d' % (addr, length))
         self.write(struct.pack('III', POKE_MEMORY, addr, length))
-        self.write(buf)
+        written=0
+        while written < length:
+            written += self.write(buf[written:])
 
     def exit(self, status):
         tubelog.debug('<<< native_exit(%x)' % status)
         self.write(struct.pack('II', NATIVE_EXIT, status))
 
     def write(self, buf, forceflush=True):
-        ret = self.fd.write(buf)
+        ret = os.write(self.fd.fileno(), buf)
         if forceflush:
             self.fd.flush()
         return ret
@@ -166,7 +168,7 @@ class SandboxedProcess:
         self.op_retval(ret, errno)
 
     def mmap(self, addr, length, prot, flags, fd, offset):
-        fd = ~((fd + 1) & 0xffffffff)
+        #fd = ~((fd + 1) & 0xffffffff)
         sandboxlog.info('+++ mmap(%#x, %#x, %#x, %#x, %#d, %d)' % 
                         (addr, length, prot, flags, fd, offset))
 
@@ -179,10 +181,8 @@ class SandboxedProcess:
         if not self.vm.mm:
             self.vm.set_pool_addr(self.get_memory_pool())
         addr = self.vm.new_mapping(addr, length, prot, flags)
-        if fd >= 0:
-            os.lseek(fd, offset, os.SEEK_SET)
-            self.poke_memory(addr, os.read(fd, length))
-        self.op_retval(int(addr & 0xffffffff), 0)
+        ret,errno = self.vfs.mmap(addr, length, prot, flags, fd, offset, self)
+        self.op_retval(ret, errno)
 
     def munmap(self, addr, length):
         sandboxlog.info('+++ munmap(%#x, %d)' % (addr, length))

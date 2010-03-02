@@ -69,8 +69,20 @@ class VfsManager(object):
             errno = e.errno
         return (ret, st, errno)
 
+    def lseek(self, remote, offset, base):
+        local = self.bridge.get(remote)
+        os.lseek(local, offset, base)
+
+    def mmap(self, addr, length, prot, flags, fd, offset, process):
+        local = self.bridge.get(fd)
+        if local > 0:
+            self.lseek(fd, offset, os.SEEK_SET) # Pay attention! It's fd, not remote
+            buf = os.read(local, length)
+            process.poke_memory(addr, buf) # XXX I know it sucks!
+        return (addr, 0)
+
     def close(self, fd):
-        ret = (-1, 0)
+        ret = (0, 0)
         if self.security.unregister_descriptor(fd):
             pass
         return ret

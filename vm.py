@@ -60,13 +60,13 @@ class Chunk:
 
 class MemoryManager(object):
     def __init__(self, addr, size):
-        if size % 4096 != 0:
-            raise MemoryException('Size not page-aligned')
+        # if size % 4096 != 0:
+        #    raise MemoryException('Size not page-aligned')
         self.pool = Chunk(addr, size, 'F')
 
     def allocate(self, chunksize):
-        if chunksize % 4096 != 0:
-            raise MemoryException('Size not page-aligned')
+        # if chunksize % 4096 != 0:
+        #     raise MemoryException('Size not page-aligned')
         chunk = self.pool.find_freechunk(chunksize)
         return chunk
 

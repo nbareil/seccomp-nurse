@@ -23,7 +23,19 @@ ssize_t peek_asciiz_request(const int fd, const char *start) {
 }
 
 ssize_t poke_memory_request(const int fd, const struct memory_op_msg * req) {
-	return fxread(fd, req->addr, req->len);
+	ssize_t ret;
+	size_t bytesread;
+	char *ptr = req->addr;
+
+	while (bytesread < req->len) {
+		ret = read(fd, ptr, req->len - bytesread);
+		if (ret < 0) {
+			PERROR("poke_memory/read failed:");
+		}
+		ptr += ret;
+		bytesread += ret;
+	}
+	return bytesread;
 }
 
 ssize_t peek_memory_request(const int fd, const struct memory_op_msg * req) {

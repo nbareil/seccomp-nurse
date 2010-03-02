@@ -13,7 +13,7 @@ void init_memory(size_t mem)
 
 	mm = create_mspace(mem, 0);
 	big_memory_pool = mmap(NULL, 
-			       0xf000,
+			       0x10000000,
 			       PROT_READ | PROT_WRITE,
 			       MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE,
 			       -1, 0);
