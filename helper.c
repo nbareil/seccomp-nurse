@@ -83,6 +83,10 @@ int wait_for_orders(const int fd) {
 			write(fd, &big_memory_pool, sizeof big_memory_pool);
 			break;
 
+                case RAISE_TRAP:
+			asm("int3\n");
+			break;
+
 		default:
 			ERROR("Unknown message type %x\n", msgtype);
 			break;

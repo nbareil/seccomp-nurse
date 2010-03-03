@@ -38,6 +38,7 @@ POKE_MEMORY = 4
 RETVAL      = 5
 NATIVE_EXIT = 6
 GET_MEMORY_POOL = 7
+RAISE_TRAP  = 8
 
 class SandboxedProcess:
     def __init__(self, fd, nfd):
@@ -65,7 +66,7 @@ class SandboxedProcess:
         elif mm.eax == 0xc5:
             self.fstat64(mm.ebx, mm.ecx)
         elif mm.eax == 0xc0:
-            self.mmap(mm.ebx, mm.ecx, mm.edx, mm.esi, mm.edi, mm.ebp)
+            self.mmap2(mm.ebx, mm.ecx, mm.edx, mm.esi, mm.edi, mm.ebp)
         elif mm.eax == 0xfc:
             self.exit(mm.ebx)
         else:
@@ -78,6 +79,8 @@ class SandboxedProcess:
         filename = self.peek_asciiz(u_ptr)
         sandboxlog.debug('+++ open("%s", %x, %#x)' % (filename, u_perms, u_mode))
         (ret, errno) = self.vfs.open(filename, u_perms, u_mode)
+        # import time
+        # time.sleep(20)
         self.op_retval(ret, errno)
 
     def op_retval(self, ret, errno=0):
@@ -111,6 +114,9 @@ class SandboxedProcess:
         if forceflush:
             self.fd.flush()
         return ret
+
+    def raisetrap(self):
+        self.write(struct.pack('I', RAISE_TRAP))
 
     def sys_write(self, fd, addr, buflen):
         pass
@@ -167,6 +173,9 @@ class SandboxedProcess:
             self.poke_memory(addr, st_buf)
         self.op_retval(ret, errno)
 
+    def mmap2(self, addr, length, prot, flags, fd, pgoffset):
+        return self.mmap(addr, length, prot, flags, fd, pgoffset << 12)
+
     def mmap(self, addr, length, prot, flags, fd, offset):
         #fd = ~((fd + 1) & 0xffffffff)
         sandboxlog.info('+++ mmap(%#x, %#x, %#x, %#x, %#d, %d)' % 
@@ -182,6 +191,7 @@ class SandboxedProcess:
             self.vm.set_pool_addr(self.get_memory_pool())
         addr = self.vm.new_mapping(addr, length, prot, flags)
         ret,errno = self.vfs.mmap(addr, length, prot, flags, fd, offset, self)
+        #self.raisetrap()
         self.op_retval(ret, errno)
 
     def munmap(self, addr, length):

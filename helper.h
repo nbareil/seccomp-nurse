@@ -6,6 +6,7 @@ enum {
 	RETVAL,
 	NATIVE_EXIT,
         MEMORY_POOL,
+        RAISE_TRAP,
 };
 
 static int controlfd = -1;

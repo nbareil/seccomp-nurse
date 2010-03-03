@@ -54,7 +54,10 @@ class VfsManager(object):
         if not self.security.fstat(remote):
             return (-1, None, EPERM)
         try:
-            local = self.bridge.get(remote)
+            if remote > 2:
+                local = self.bridge.get(remote)
+            else:
+                local = remote
         except KeyError:
             vfslog.error('%d: no such file descriptor' % remote)
             return (0xffffffff, None, EBADF)

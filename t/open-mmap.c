@@ -13,6 +13,7 @@ int main(int argc, char *argv[]) {
 
         fstat(fd, &st);
         addr = mmap(0, st.st_size, 0x1, 0x2, fd, 0);
+        printf("addr=%#p\n", addr);
 
         j=0;
         while (j < st.st_size) {

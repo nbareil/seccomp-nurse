@@ -28,7 +28,7 @@ class SecurityManager(object):
         pass
 
     def fstat(self, fd):
-        ret = fd in self.fd_table
+        ret = (0 <= fd <= 2) or (fd in self.fd_table)
         securitylog.info('Can fstat(%d)? %s' % (fd, ret))
         return ret
 
