@@ -52,9 +52,21 @@ void handler(void) {
 	    "jmp do_syscall\n"
 
 	    "wrapper:\n"
+	    "			pushl %%ebx\n"
 	    "			pushl %%ecx\n"
+	    "			pushl %%edx\n"
+	    "			pushl %%esi\n"
+	    "			pushl %%edi\n"
 	    "			call *%0\n"
+	    "			popl %%edi\n"
+	    "			popl %%esi\n"
+	    "			popl %%edx\n"
 	    "			popl %%ecx\n"
+	    "			popl %%ebx\n"
+
+
+
+            //	    "			popl %%ecx\n"
 	    "			jmp out\n"
 
 	    "do_syscall:\n"
