@@ -6,6 +6,10 @@
 #define _ElfW_1(e,w,t)	e##w##t
 #define __ELF_NATIVE_CLASS __WORDSIZE
 
+#define SHMEM_NAME "/seccompnurse"
+#define SHMEM_MODE 277
+#define SHMEM_SIZE 0x10
+
 typedef int (*main_t)(int, char **, char **);
 main_t realmain;
 #endif

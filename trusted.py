@@ -3,7 +3,7 @@
 import struct, os, sys
 import logging
 from errno import *
-
+from trustedthread import TrustedThread, VolatileArgument
 import vfs, vm
 
 lvl = logging.DEBUG
@@ -20,11 +20,15 @@ class Memory:
          self.ecx, self.edx,
          self.esi, self.edi,
          self.ebp) = regs
-
     @staticmethod
     def parse(raw):
         return Memory(struct.unpack('7I', raw))
-
+    def pack(self):
+        return struct.pack('7I', 
+                           self.eax, self.ebx, 
+                           self.ecx, self.edx,
+                           self.esi, self.edi,
+                           self.ebp)
     def __repr__(self):
         return 'eax=%x ebx=%x ecx=%x edx=%x esi=%x edi=%x ebp=%x' % (self.eax, self.ebx, 
                                                                      self.ecx, self.edx,
@@ -37,21 +41,21 @@ PEEK_MEMORY = 3
 POKE_MEMORY = 4
 RETVAL      = 5
 NATIVE_EXIT = 6
-GET_MEMORY_POOL = 7
+POSTBOX = 7
 RAISE_TRAP  = 8
 
 class SandboxedProcess:
     def __init__(self, fd, nfd):
         self.fd  = os.fdopen(fd, 'w+')
         self.vfs = vfs.VfsManager(fd+1, fd+1+nfd, root='/')
-        self.vm  = vm.VirtualMemory(0x01000000)
+        #self.vm  = vm.VirtualMemory(0x01000000)
+        self.trustedthread = TrustedThread(self.get_postbox_addr()) # XXX
 
     def syscall_request(self):
         sandboxlog.info('syscall request ringing...')
         msg = self.fd.read(7*4)
         mm = Memory.parse(msg)
         sandboxlog.debug('>>> %s' % mm)
-
 
         if mm.eax == 3:
             self.sys_read(mm.ebx, mm.ecx, mm.edx)
@@ -78,6 +82,13 @@ class SandboxedProcess:
         u_mode  = reg.edx
         filename = self.peek_asciiz(u_ptr)
         sandboxlog.debug('+++ open("%s", %x, %#x)' % (filename, u_perms, u_mode))
+        registers = {
+            'eax': reg.eax,
+            'ebx': VolatileArgument(filename),
+            'ecx': reg.ecx,
+            'edx': reg.edx,
+            }
+        ret = self.trustedthread.delegate(registers)
         (ret, errno) = self.vfs.open(filename, u_perms, u_mode)
         # import time
         # time.sleep(20)
@@ -177,21 +188,9 @@ class SandboxedProcess:
         return self.mmap(addr, length, prot, flags, fd, pgoffset << 12)
 
     def mmap(self, addr, length, prot, flags, fd, offset):
-        #fd = ~((fd + 1) & 0xffffffff)
         sandboxlog.info('+++ mmap(%#x, %#x, %#x, %#x, %#d, %d)' % 
                         (addr, length, prot, flags, fd, offset))
-
-        # if not self.security.mmap(addr, length, prot, flags, fd, offset):
-        #     raise SecurityViolation("mmap denied")
-
-        ## XXX: Check if fd is owned by the sandbox
-        ## XXX: Offset must be page aligned
-
-        if not self.vm.mm:
-            self.vm.set_pool_addr(self.get_memory_pool())
-        addr = self.vm.new_mapping(addr, length, prot, flags)
-        ret,errno = self.vfs.mmap(addr, length, prot, flags, fd, offset, self)
-        #self.raisetrap()
+        self.raisetrap()
         self.op_retval(ret, errno)
 
     def munmap(self, addr, length):
@@ -199,9 +198,9 @@ class SandboxedProcess:
         self.vm.release_mapping(addr, length)
         self.op_retval(0, 0)
 
-    def get_memory_pool(self):
-        tubelog.debug('<<< memory_pool_addr')
-        self.write(struct.pack('I', GET_MEMORY_POOL))
+    def get_postbox_addr(self):
+        tubelog.debug('<<< postbox_addr')
+        self.write(struct.pack('I', POSTBOX))
         addr = struct.unpack('I', self.read(4))[0]
         tubelog.info('>>> memory pool is at %x' % addr)
         return addr
@@ -213,7 +212,7 @@ class SandboxedProcess:
 
 class TrustedProcess:
     def __init__(self):
-        numdescriptors = int(sys.argv[1])
+        numdescriptors = 20
         self.master_socket = 4
         self.sandbox = SandboxedProcess(self.master_socket, numdescriptors)
 
@@ -221,15 +220,11 @@ class TrustedProcess:
         msgtype = struct.unpack('I', rawtype)[0]
         if msgtype == DO_SYSCALL:
             self.sandbox.syscall_request()
-        elif msgtype == MEMORY_POOL:
-            self.sandbox.set_memory_pool()
         else:
             tubelog.error('Unknown message type: %#x' % msgtype)
 
     def run(self):
         while True:
-            if not self.sandbox.vfs.bridge.run(self.master_socket):
-                raise Exception('Select_loop failed!')
             buf = os.read(self.master_socket, 4)
             if not buf:
                 break

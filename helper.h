@@ -9,4 +9,5 @@ enum {
         RAISE_TRAP,
 };
 
-static int controlfd = -1;
+#define THREAD_FD  3
+#define CONTROL_FD 4

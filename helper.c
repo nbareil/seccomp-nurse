@@ -3,6 +3,7 @@
 #include <errno.h>
 
 #include "helper.h"
+#include "companion.h"
 #include "common.h"
 #include "mm.h"
 
@@ -51,7 +52,6 @@ int wait_for_orders(const int fd) {
 
 	while (1) {
 		fxread(fd, &msgtype, sizeof msgtype);
-	
 		switch (msgtype) {
 		case PEEK_ASCIIZ:
 			fxread(fd, &addr, sizeof addr);
@@ -78,9 +78,8 @@ int wait_for_orders(const int fd) {
 			_exit(ret);
 			break;
 
-                case MEMORY_POOL:
-			DEBUGP("big_memory_pool = %#p\n", big_memory_pool);
-			write(fd, &big_memory_pool, sizeof big_memory_pool);
+		case MEMORY_POOL:
+			write(fd, &range_start, sizeof range_start);
 			break;
 
                 case RAISE_TRAP:

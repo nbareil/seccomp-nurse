@@ -453,3 +453,25 @@ void handler(void) {
   Behing theses primitives, the whole logic is done in the trusted
   process.
   
+* Hybrid approach
+
+  Either we limit the usage of the trusted thread for specifc case
+  where it is not possible to do the action otherwise, or we always
+  use the trusted thread.
+
+***  Case 1 : Always use of the trusted thread
+
+  Pros:
+    + Performance boost!
+    + A lot more cleaner
+
+  Cons:
+    - The attack surface is increased if we do not do sanitize perfectly
+      the arguments
+
+*** Case 2: Hybrid
+
+  Pros:
+  
+
+  Cons:

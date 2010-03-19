@@ -10,10 +10,11 @@ class SecurityManager(object):
 
     def register_descriptor(self, fd, filename):
         if fd in self.fd_table:
-            raise SecurityException('File descriptor %d already opened!' % fd)
+            securitylog.error('File descriptor %d already opened!' % fd)
+            return False
         self.fd_table[fd] = filename
         securitylog.debug('Registering file descriptor %d associated to %s' % (fd, filename))
-
+        return True
 
     # Trying to close a not-opened-file-descriptor is not
     # fatal because daemons usually try to close every
@@ -25,11 +26,40 @@ class SecurityManager(object):
         return opened
 
     def open(self, filename, perms, mode):
-        pass
+        return True # XXX
 
-    def fstat(self, fd):
-        ret = (0 <= fd <= 2) or (fd in self.fd_table)
-        securitylog.info('Can fstat(%d)? %s' % (fd, ret))
+    def close(self, fd):
+        return True # XXX
+
+    def brk(self, addr):
+        return self.is_valid(addr) and True # XXX
+
+    def munmap(self, addr, length):
+        return True # XXX
+
+    def fstat(self, fd, ptr):
+        ret = self.is_valid(ptr) and ((0 <= fd <= 2) or (fd in self.fd_table))
+        securitylog.debug('Can fstat(%d)? %s' % (fd, ret))
         return ret
 
-    
+    def mmap(self, addr, length, prot, flags, fd, offset):
+        return True
+
+    def is_valid(self, ptr):
+        ret = True # XXX
+        if not ret:
+            tubelog.error('invalid pointer supplied: %#x' % ptr)
+        return ret
+
+    def lseek(self, fd, offset, whence):
+        return True # XXX
+
+    def llseek(self, fd, offset_high, offset_low, result, whence):
+        return self.is_valid(result) and True
+
+    def stat64(self, path, addr):
+        return self.is_valid(addr) and True # XXX
+
+    def access(self, path, mode):
+        return True # XXX
+
