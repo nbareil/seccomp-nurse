@@ -1,5 +1,6 @@
 #! /usr/bin/env python
 
+import inspect
 import mmap, os, struct
 import logging
 
@@ -53,8 +54,10 @@ class Memory:
                                                                      self.ebp)
 
 syscalls_table = {}
-def syscall(nr, argc):
+def syscall(nr):
     def _syscall(func):
+        (args, varargs, keywords, defaults) = inspect.getargspec(func)
+        argc = len(args) - 1
         def __syscall(*args, **kwargs):
             arguments = list(args[1:__syscall.argc+1])
             sandboxlog.info('+++ %s(%s)' % (__syscall.name, ','.join(map(str, map(hex, arguments)))))
@@ -102,7 +105,7 @@ class HybridSandbox:
         registers = mm.aslist()[1:func.argc+1]
         return func(self, *registers)
 
-    @syscall(NR_open, 3)
+    @syscall(NR_open)
     def open(self, filename_ptr, perms, mode):
         if not self.security.is_valid(filename_ptr):
             return -1
@@ -118,7 +121,7 @@ class HybridSandbox:
             self.security.register_descriptor(ret, filename)
         return ret
 
-    @syscall(NR_close, 1)
+    @syscall(NR_close)
     def close(self, fd):
         if not self.security.close(fd):
             return -1
@@ -129,7 +132,7 @@ class HybridSandbox:
             self.security.unregister_descriptor(fd)
         return ret
 
-    @syscall(NR_access, 2)
+    @syscall(NR_access)
     def access(self, path_ptr, mode):
         if not self.security.is_valid(path_ptr):
             return -1
@@ -141,7 +144,7 @@ class HybridSandbox:
         ret = self.trustedthread.delegate(args)
         return ret
 
-    @syscall(NR_lseek, 3)
+    @syscall(NR_lseek)
     def lseek(self, fd, offset, whence):
         if not self.security.lseek(fd, offset, whence):
             return -1
@@ -151,7 +154,7 @@ class HybridSandbox:
                       edx=whence)
         return self.trustedthread.delegate(args)
 
-    @syscall(NRllseek, 5)
+    @syscall(NRllseek)
     def llseek(self, fd, offset_high, offset_low, result, whence):
         if not self.security.llseek(fd, offset_high, offset_low, result, whence):
             return -1
@@ -163,7 +166,7 @@ class HybridSandbox:
                       edi=whence)
         return self.trustedthread.delegate(args)
 
-    @syscall(NR_stat64, 2)
+    @syscall(NR_stat64)
     def stat64(self, path_ptr, addr):
         if not self.security.is_valid(path_ptr):
             return -1
@@ -174,7 +177,7 @@ class HybridSandbox:
                       ecx=addr)
         return self.trustedthread.delegate(args)
 
-    @syscall(NR_fstat64, 2)
+    @syscall(NR_fstat64)
     def fstat64(self, fd, ptr):
         if not self.security.fstat(fd, ptr):
             return -1
@@ -183,7 +186,7 @@ class HybridSandbox:
                       ecx=ptr)
         return self.trustedthread.delegate(args)
 
-    @syscall(NR_mmap2, 6)
+    @syscall(NR_mmap2)
     def mmap2(self, addr, length, prot, flags, fd, pgoffset):
         if not self.security.mmap2(addr, length, prot, flags, fd, pgoffset):
             return -1
@@ -196,7 +199,7 @@ class HybridSandbox:
                       ebp=pgoffset)
         return self.trustedthread.delegate(args)
 
-    @syscall(NR_mmap, 6)
+    @syscall(NR_mmap)
     def mmap(self, addr, length, prot, flags, fd, offset):
         if not self.security.mmap(addr, length, prot, flags, fd, offset):
             return -1
@@ -209,14 +212,14 @@ class HybridSandbox:
                       ebp=offset)
         return self.trustedthread.delegate(args)
 
-    @syscall(NR_brk, 1)
+    @syscall(NR_brk)
     def brk(self, addr):
         if not self.security.brk(addr):
             return -1
         args = Memory(eax=NR_brk, ebx=addr)
         return self.trustedthread.delegate(args)
 
-    @syscall(NR_munmap, 2)
+    @syscall(NR_munmap)
     def munmap(self, addr, length):
         if not self.security.munmap(addr, length):
             return -1
