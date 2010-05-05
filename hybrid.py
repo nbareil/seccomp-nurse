@@ -185,7 +185,16 @@ class HybridSandbox:
 
     @syscall(NR_mmap2, 6)
     def mmap2(self, addr, length, prot, flags, fd, pgoffset):
-        return self.mmap(addr, length, prot, flags, fd, pgoffset << 12)
+        if not self.security.mmap2(addr, length, prot, flags, fd, pgoffset):
+            return -1
+        args = Memory(eax=NR_mmap2,
+                      ebx=addr,
+                      ecx=length,
+                      edx=prot,
+                      esi=flags,
+                      edi=fd,
+                      ebp=pgoffset)
+        return self.trustedthread.delegate(args)
 
     @syscall(NR_mmap, 6)
     def mmap(self, addr, length, prot, flags, fd, offset):

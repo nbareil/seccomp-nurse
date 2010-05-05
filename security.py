@@ -42,6 +42,9 @@ class SecurityManager(object):
         securitylog.debug('Can fstat(%d)? %s' % (fd, ret))
         return ret
 
+    def mmap2(self, addr, length, prot, flags, fd, pgoffset):
+        return True
+
     def mmap(self, addr, length, prot, flags, fd, offset):
         return True
 
