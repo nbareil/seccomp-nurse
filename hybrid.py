@@ -144,6 +144,11 @@ class HybridSandbox:
         ret = self.trustedthread.delegate(args)
         return ret
 
+    @syscall(NR_getpid)
+    def getpid(self):
+        args = Memory(eax=NR_getpid)
+        return self.trustedthread.delegate(args)
+
     @syscall(NR_lseek)
     def lseek(self, fd, offset, whence):
         if not self.security.lseek(fd, offset, whence):
