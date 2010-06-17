@@ -78,7 +78,7 @@ int wrap_main(int argc, char *argv[], char *environ[]) {
                 exit(1);
         }
 
-        // enter_seccomp_mode();
+        enter_seccomp_mode();
         hijack_vdso_gate();
 
         return realmain(argc, argv, environ);
