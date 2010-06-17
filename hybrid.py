@@ -9,13 +9,6 @@ from errno import *
 from trustedthread import TrustedThread
 import security
 
-lvl = logging.DEBUG
-logging.basicConfig(level=lvl,
-                    format="%(name)15.15s %(levelname)5s: %(message)s")
-
-mainlog    = logging.getLogger("trusted")
-sandboxlog = logging.getLogger("sandbox.action")
-tubelog    = logging.getLogger("sandbox.tube")
 
 THREAD_FD = 3
 CONTROL_FD = 4
@@ -330,6 +323,17 @@ class HybridSandbox:
             self.dispatcher(buf)
 
 if __name__ == '__main__':
+    lvl = os.environ.get('SECCOMP_NURSE_DEBUG', '').upper()
+    if lvl in ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"):
+        lvl = getattr(logging, lvl)
+    else:
+        lvl = logging.ERROR
+    logging.basicConfig(level=lvl,
+                        format="%(name)15.15s %(levelname)5s: %(message)s")
+    mainlog    = logging.getLogger("trusted")
+    sandboxlog = logging.getLogger("sandbox.action")
+    tubelog    = logging.getLogger("sandbox.tube")
+
     sandbox = HybridSandbox()
     sandbox.run()
 

@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) {
                         dup2(thread_sockets[0], CONTROL_FD);
                         close(thread_sockets[0]);
 
-                        execve(TRUSTED_PATH, NULL, NULL);
+                        execve(TRUSTED_PATH, NULL, environ);
                 } else if (trusted == 0) {
                         waitpid(untrusted, &ret, 0);
                         waitpid(trusted, &ret, 0);
