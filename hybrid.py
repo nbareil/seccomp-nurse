@@ -100,7 +100,7 @@ class HybridSandbox:
     def do(self, mm):
         if not mm.eax in syscalls_table:
             sandboxlog.error('syscall %s [nr=%#x] not implemented' % (syscallnr2human.get(mm.eax, ('???')), mm.eax))
-            return -1
+            return 0
         func = syscalls_table.get(mm.eax)
         registers = mm.aslist()[1:func.argc+1]
         return func(self, *registers)
