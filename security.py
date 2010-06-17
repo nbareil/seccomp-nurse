@@ -31,8 +31,23 @@ class SecurityManager(object):
     def close(self, fd):
         return True # XXX
 
+    def access(self, path, mode):
+        return True
+
+    def getcwd(self, ptr):
+        return self.is_valid(ptr) # XXX
+
+    def getpgrp(self):
+        return True # XXX
+
+    def ugetrlimit(self, ptr):
+        return self.is_valid(ptr) # XXX
+
+    def gettimeofday(self, tvptr, tzptr):
+        return self.is_valid(tvptr) and self.is_valid(tzptr) # XXX
+
     def brk(self, addr):
-        return self.is_valid(addr) and True # XXX
+        return self.is_valid(addr) # XXX
 
     def munmap(self, addr, length):
         return True # XXX
@@ -58,10 +73,19 @@ class SecurityManager(object):
         return True # XXX
 
     def llseek(self, fd, offset_high, offset_low, result, whence):
-        return self.is_valid(result) and True
+        return self.is_valid(result) # XXX
+
+    def readlink(self, bufptr):
+        return self.is_valid(bufptr) # XXX
+
+    def time(self, bufptr):
+        return self.is_valid(bufptr) # XXX
+
+    def times(self, bufptr):
+        return self.is_valid(bufptr) # XXX
 
     def stat64(self, path, addr):
-        return self.is_valid(addr) and True # XXX
+        return self.is_valid(addr) # XXX
 
     def access(self, path, mode):
         return True # XXX

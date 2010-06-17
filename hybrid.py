@@ -135,24 +135,46 @@ class HybridSandbox:
     @syscall(NR_access)
     def access(self, path_ptr, mode):
         if not self.security.is_valid(path_ptr):
-            return -1
+            return (-1, EACCES)
         path = self.peek_asciiz(path_ptr)
-        self.security.access(path, mode)
+        if not self.security.access(path, mode):
+            return (-1, EACCES)
         args = Memory(eax=NR_access,
                       ebx=path,
                       ecx=mode)
         ret = self.trustedthread.delegate(args)
         return ret
 
+    @syscall(NR_getcwd)
+    def getcwd(self, path_ptr):
+        if not self.security.getcwd(path_ptr):
+            return (0, EFAULT)
+        args = Memory(eax=NR_getcwd, ebx=path_ptr)
+        return self.trustedthread.delegate(args)
+
+    @syscall(NR_getpgrp)
+    def getpgrp(self):
+        if not self.security.getpgrp():
+            return (-1, EPERM)
+        args = Memory(eax=NR_getpgrp)
+        return self.trustedthread.delegate(args)
+
     @syscall(NR_getpid)
     def getpid(self):
         args = Memory(eax=NR_getpid)
         return self.trustedthread.delegate(args)
 
+    @syscall(NR_gettimeofday)
+    def gettimeofday(self, tv_ptr, tz_ptr):
+        if not self.security.gettimeofday(tv_ptr, tz_ptr):
+            return (-1, EPERM)
+        args = Memory(eax=NR_gettimeofday, ebx=tv_ptr, ecx=tz_ptr)
+        return self.trustedthread.delegate(args)
+
     @syscall(NR_lseek)
     def lseek(self, fd, offset, whence):
         if not self.security.lseek(fd, offset, whence):
-            return -1
+            return (-1, EBADF)
         args = Memory(eax=NR_lseek,
                       ebx=fd,
                       ecx=offset,
@@ -162,8 +184,8 @@ class HybridSandbox:
     @syscall(NRllseek)
     def llseek(self, fd, offset_high, offset_low, result, whence):
         if not self.security.llseek(fd, offset_high, offset_low, result, whence):
-            return -1
-        args = Memory(eax=NR_lseek,
+            return (-1, EBADF)
+        args = Memory(eax=NRllseek,
                       ebx=fd,
                       ecx=offset_high,
                       edx=offset_low,
@@ -171,12 +193,20 @@ class HybridSandbox:
                       edi=whence)
         return self.trustedthread.delegate(args)
 
+    @syscall(NR_readlink)
+    def readlink(self, path_ptr):
+        if not self.security.readlink(path_ptr):
+            return (-1, EACCES)
+        args = Memory(eax=NR_readlink, ebx=path_ptr)
+        return self.trustedthread.delegate(args)
+
     @syscall(NR_stat64)
     def stat64(self, path_ptr, addr):
         if not self.security.is_valid(path_ptr):
-            return -1
+            return (-1, EACCES)
         path = self.peek_asciiz(path_ptr)
-        self.security.stat64(path, addr)
+        if not self.security.stat64(path, addr):
+            return (-1, EACCES)
         args = Memory(eax=NR_stat64,
                       ebx=path,
                       ecx=addr)
@@ -185,7 +215,7 @@ class HybridSandbox:
     @syscall(NR_fstat64)
     def fstat64(self, fd, ptr):
         if not self.security.fstat(fd, ptr):
-            return -1
+            return (-1, EACCES)
         args = Memory(eax=NR_fstat64,
                       ebx=fd,
                       ecx=ptr)
@@ -194,7 +224,7 @@ class HybridSandbox:
     @syscall(NR_mmap2)
     def mmap2(self, addr, length, prot, flags, fd, pgoffset):
         if not self.security.mmap2(addr, length, prot, flags, fd, pgoffset):
-            return -1
+            return (-1, EACCES)
         args = Memory(eax=NR_mmap2,
                       ebx=addr,
                       ecx=length,
@@ -207,7 +237,7 @@ class HybridSandbox:
     @syscall(NR_mmap)
     def mmap(self, addr, length, prot, flags, fd, offset):
         if not self.security.mmap(addr, length, prot, flags, fd, offset):
-            return -1
+            return (-1, EACCES)
         args = Memory(eax=NR_mmap,
                       ebx=addr,
                       ecx=length,
@@ -220,17 +250,38 @@ class HybridSandbox:
     @syscall(NR_brk)
     def brk(self, addr):
         if not self.security.brk(addr):
-            return -1
+            return (-1, ENOMEM)
         args = Memory(eax=NR_brk, ebx=addr)
+        return self.trustedthread.delegate(args)
+
+    @syscall(NR_ugetrlimit)
+    def ugetrlimit(self, ptr): # XXX: Security!
+        if not self.security.ugetrlimit(ptr):
+            return (-1, EPERM)
+        args = Memory(eax=NR_ugetrlimit, ebx=ptr)
         return self.trustedthread.delegate(args)
 
     @syscall(NR_munmap)
     def munmap(self, addr, length):
         if not self.security.munmap(addr, length):
-            return -1
+            return (-1, EACCES)
         args = Memory(eax=NR_munmap,
                       ebx=addr,
                       ecx=length)
+        return self.trustedthread.delegate(args)
+
+    @syscall(NR_time)
+    def time(self, time_ptr):
+        if not self.security.time(time_ptr):
+            return (-1, EFAULT)
+        args = Memory(eax=NR_time, ebx=time_ptr)
+        return self.trustedthread.delegate(args)
+
+    @syscall(NR_times)
+    def times(self, bufptr):
+        if not self.security.times(bufptr):
+            return (-1, EPERM)
+        args = Memory(eax=NR_times, ebx=tms_ptr)
         return self.trustedthread.delegate(args)
 
     def op_retval(self, ret, errno=0):
@@ -263,7 +314,11 @@ class HybridSandbox:
         msgtype = struct.unpack('I', rawtype)[0]
         if msgtype == DO_SYSCALL:
             ret = self.syscall_request()
-            self.op_retval(ret)
+            if hasattr(ret, '__getiter__'):
+                ret,errno=ret
+            else:
+                errno=0
+            self.op_retval(ret, errno)
         else:
             tubelog.error('Unknown message type: %#x' % msgtype)
 
