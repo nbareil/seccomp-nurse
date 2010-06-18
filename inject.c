@@ -39,17 +39,19 @@ void enter_seccomp_mode(void) {
 
 void fill_return_table(char *array) {
 	int i = 0;
-        printf("array=%p\n", array);
 	while (i < 256)
 		*(array+i) = (char)i++;
         /* XXX: need to mptrotect() this zone */
 }
 
-int wrap_main(int argc, char *argv[], char *environ[]) {
+unsigned int la_version(unsigned int version) {
+        return version;
+}
+
+void la_preinit(uintptr_t *cookie) {
         char dummy_stack[512];
         void *sharedmemory;
         int ret, fd;
-
         do {
                 fd = shm_open(SHMEM_NAME, O_RDONLY, SHMEM_MODE);
                 if ((fd < 0) && errno != ENOENT) {
@@ -80,39 +82,4 @@ int wrap_main(int argc, char *argv[], char *environ[]) {
 
         enter_seccomp_mode();
         hijack_vdso_gate();
-
-        return realmain(argc, argv, environ);
 }
-
-int __libc_start_main(main_t main,
-		      int argc,
-		      char *__unbounded *__unbounded ubp_av,
-		      ElfW(auxv_t) *__unbounded auxvec,
-		      __typeof (main) init,
-		      void (*fini) (void),
-		      void (*rtld_fini) (void), void *__unbounded stack_end)
-{
-	void *libc;
-	int (*libc_start_main)(main_t main, 
-			       int,
-			       char *__unbounded *__unbounded,
-			       ElfW(auxv_t) *,
-			       __typeof (main), 
-			       void (*fini) (void),
-			       void (*rtld_fini) (void),
-			       void *__unbounded stack_end);
-
-	DEBUGP(" [+] Loading libc...\n");
-	libc = dlopen("libc.so.6", RTLD_LOCAL  | RTLD_LAZY);
-	if (!libc)
-		ERROR("	 dlopen() failed: %s\n", dlerror());
-
-	DEBUGP(" [+] Calling __libc_start_main of %s...\n", ubp_av[0]);
-	libc_start_main = dlsym(libc, "__libc_start_main");
-	if (!libc_start_main)
-		ERROR("	    Failed: %s\n", dlerror());
-
-	realmain = main;
-	return (*libc_start_main)(wrap_main, argc, ubp_av, auxvec, init, fini, rtld_fini, stack_end);
-}
-

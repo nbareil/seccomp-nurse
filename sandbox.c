@@ -44,7 +44,7 @@ int main(int argc, char *argv[]) {
                 close(6);
                 close(5);
 
-                setenv("LD_PRELOAD", "./sandbox.so", 1);
+                setenv("LD_AUDIT", "./sandbox.so", 1);
                 execve(argv[1], argv+1, environ);
                 perror("execve()");
                 exit(4);
