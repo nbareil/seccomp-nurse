@@ -248,7 +248,7 @@ class HybridSandbox:
         return self.trustedthread.delegate(args)
 
     @syscall(NR_ugetrlimit)
-    def ugetrlimit(self, ptr): # XXX: Security!
+    def ugetrlimit(self, ptr):
         if not self.security.ugetrlimit(ptr):
             return (-1, EPERM)
         args = Memory(eax=NR_ugetrlimit, ebx=ptr)
