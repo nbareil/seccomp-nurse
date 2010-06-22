@@ -1,0 +1,45 @@
+#! /usr/bin/env python
+
+import os
+import sys
+import socket
+from optparse import OptionParser
+
+THREAD_FD=3
+CONTROL_FD=4
+TRUSTED_PATH='./hybrid.py'
+
+LDLINUX='/lib/ld-linux.so.2'
+RTLDAUDIT='./sandbox.so'
+LDLINUX_ARGS = [LDLINUX, '--audit', RTLDAUDIT]
+
+SANDBOX_USAGE='''usage: %prog [options] -- cmd args1 args2
+
+Sandbox application into a SECCOMP jail
+
+'''
+parser = OptionParser(usage=SANDBOX_USAGE)
+(options, args) = parser.parse_args()
+
+controlsockets = socket.socketpair()
+threadsockets  = socket.socketpair()
+
+pid = os.fork()
+if pid > 0:
+    os.dup2(controlsockets[1].fileno(), THREAD_FD)
+    os.dup2(threadsockets[1].fileno(), CONTROL_FD)
+    os.close(6)
+    os.close(5)
+
+    os.execve(LDLINUX, LDLINUX_ARGS + args, os.environ)
+
+elif pid == 0:
+    threadsockets[1].close()
+    controlsockets[1].close()
+    os.dup2(threadsockets[0].fileno(), CONTROL_FD)
+    threadsockets[0].close()
+
+    os.execve(TRUSTED_PATH, (TRUSTED_PATH,), os.environ)
+
+else:
+    raise Exception('Fork failed?')

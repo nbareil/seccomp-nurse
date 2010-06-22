@@ -1,7 +1,7 @@
 #! /usr/bin/make -f
 
 CFLAGS=-O2 -Wall -w -Wextra -g
-BINARIES=sandbox.so sandbox
+BINARIES=sandbox.so
 
 .PHONY: all clean
 
