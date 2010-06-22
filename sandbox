@@ -28,6 +28,25 @@ if not args:
 
 os.environ['SECCOMP_NURSE_LOGLEVEL'] = options.loglevel
 
+cmd=args[0]
+try:
+    os.stat(cmd)
+except OSError:
+    found=False
+    for pathdir in os.environ['PATH'].split(':'):
+        try:
+            absolutepath=os.path.join(pathdir, cmd)
+            os.stat(absolutepath)
+            found=True
+            break
+        except OSError:
+            pass
+    if found:
+        args[0] = absolutepath
+    else:
+        print 'ERROR: %s: no command found' % (cmd)
+        sys.exit(2)
+
 controlsockets = socket.socketpair()
 threadsockets  = socket.socketpair()
 
