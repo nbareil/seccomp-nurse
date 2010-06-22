@@ -19,5 +19,5 @@ size_t fxread(int fd, void *buf, size_t count) {
         if (ret != count) {
                 ERROR("read too short ret=%d count=%d", ret, count);
         }
-
+        return ret;
 }
