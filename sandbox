@@ -15,11 +15,18 @@ LDLINUX_ARGS = [LDLINUX, '--audit', RTLDAUDIT]
 
 SANDBOX_USAGE='''usage: %prog [options] -- cmd args1 args2
 
-Sandbox application into a SECCOMP jail
+       Sandbox application inside a SECCOMP jail'''
 
-'''
 parser = OptionParser(usage=SANDBOX_USAGE)
+parser.add_option('-d', '--debug', dest='loglevel', default='ERROR', metavar='LEVEL'
+                  , help='LEVEL can be DEBUG, WARNING, INFO, ERROR, CRITICAL')
 (options, args) = parser.parse_args()
+
+if not args:
+    parser.print_help()
+    sys.exit(1)
+
+os.environ['SECCOMP_NURSE_LOGLEVEL'] = options.loglevel
 
 controlsockets = socket.socketpair()
 threadsockets  = socket.socketpair()

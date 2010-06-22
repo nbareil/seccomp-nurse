@@ -323,7 +323,7 @@ class HybridSandbox:
             self.dispatcher(buf)
 
 if __name__ == '__main__':
-    lvl = os.environ.get('SECCOMP_NURSE_DEBUG', '').upper()
+    lvl = os.environ.get('SECCOMP_NURSE_LOGLEVEL', '').upper()
     if lvl in ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"):
         lvl = getattr(logging, lvl)
     else:
