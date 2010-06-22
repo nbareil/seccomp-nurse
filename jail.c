@@ -51,7 +51,6 @@ void handler(void) {
 	    "cmpl " ivalue(__NR_exit_group) ", %%eax\n"
 	    "jne wrapper\n"
 	    "movl " ivalue(__NR_exit) ", %%eax\n"
-	    "jmp do_syscall\n"
 
 	    "wrapper:\n"
 	    "			pushl %%ebx\n"

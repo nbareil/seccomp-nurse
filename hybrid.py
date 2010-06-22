@@ -1,5 +1,6 @@
 #! /usr/bin/env python
 
+import sys
 import inspect
 import mmap, os, struct
 import logging
@@ -163,6 +164,15 @@ class HybridSandbox:
             return (-1, EPERM)
         args = Memory(eax=NR_gettimeofday, ebx=tv_ptr, ecx=tz_ptr)
         return self.trustedthread.delegate(args)
+
+    @syscall(NR_exit)
+    def exit(self, val):
+        args = Memory(eax=NR_exit_group, ebx=val)
+        sandboxlog.info('EXIT')
+        self.control.write(struct.pack('II', NATIVE_EXIT, val))
+        self.control.flush()
+        self.trustedthread.delegate(args, willexit=True)
+        sys.exit(val)
 
     @syscall(NR_lseek)
     def lseek(self, fd, offset, whence):

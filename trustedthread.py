@@ -11,7 +11,7 @@ class TrustedThread(object):
         self.thread  = os.fdopen(fd, 'w+')
         self.r_baseaddr = struct.unpack('I', self.thread.read(4))[0]
 
-    def delegate(self, mm):
+    def delegate(self, mm, willexit=False):
         for name in ['eax', 'ebx', 'ecx', 'edx', 'esi', 'edi', 'ebp']:
             value = getattr(mm, name)
             if isinstance(value, str):
@@ -19,9 +19,10 @@ class TrustedThread(object):
                 setattr(mm, name, ptr)
         self.push_registers(mm)
         self.wakeup()
-        ret = struct.unpack('I', self.thread.read(4))[0]
-        self.forget()
-        return ret
+        if not willexit:
+            ret = struct.unpack('I', self.thread.read(4))[0]
+            self.forget()            
+            return ret
 
     def push_registers(self, mm):
         raw = mm.pack()

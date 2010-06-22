@@ -51,7 +51,7 @@ controlsockets = socket.socketpair()
 threadsockets  = socket.socketpair()
 
 pid = os.fork()
-if pid > 0:
+if pid == 0:
     os.dup2(controlsockets[1].fileno(), THREAD_FD)
     os.dup2(threadsockets[1].fileno(), CONTROL_FD)
     os.close(6)
@@ -59,13 +59,13 @@ if pid > 0:
 
     os.execve(LDLINUX, LDLINUX_ARGS + args, os.environ)
 
-elif pid == 0:
+elif pid > 0:
     threadsockets[1].close()
     controlsockets[1].close()
     os.dup2(threadsockets[0].fileno(), CONTROL_FD)
     threadsockets[0].close()
 
-    os.execve(TRUSTED_PATH, (TRUSTED_PATH,), os.environ)
+    os.execve(TRUSTED_PATH, (TRUSTED_PATH, repr(pid)), os.environ)
 
 else:
     raise Exception('Fork failed?')

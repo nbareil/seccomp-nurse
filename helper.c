@@ -75,7 +75,11 @@ int wait_for_orders(const int fd) {
 
 		case NATIVE_EXIT:
 			fxread(fd, &ret, sizeof ret);
-			_exit(ret);
+                        asm("mov $1, %%eax\n"
+                            "mov %0, %%ebx\n"
+                            "int $0x80\n"
+                            : /* output */
+                            : "m" (ret));
 			break;
 
 		case MEMORY_POOL:
