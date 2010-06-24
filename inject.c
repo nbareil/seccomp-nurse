@@ -74,6 +74,7 @@ void la_preinit(uintptr_t *cookie) {
         fill_return_table(retarray);
 
         write(3, &range_start, sizeof range_start);
+        write(3, &range_end, sizeof range_end);
         ret = clone(companion_routine, dummy_stack+sizeof dummy_stack, CLONE_FILES|CLONE_VM, 12);
         if (ret == -1) {
                 perror("clone(trusted)");

@@ -76,8 +76,9 @@ class HybridSandbox:
     def __init__(self):
         self.control = os.fdopen(CONTROL_FD, 'w+', 0)
         shmem = self.shmem_open()
-        self.trustedthread = TrustedThread(THREAD_FD, shmem)
-        self.security = security.SecurityManager()
+        self.trustedthread = TrustedThread(sys.argv[1], THREAD_FD, shmem)
+        memory_mappings = self.trustedthread.get_protected_sections()
+        self.security = security.SecurityManager(memory_mappings)
 
     def shmem_open(self):
         self.shmemfd = open(SHMEM_FILENAME, 'w+')

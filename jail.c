@@ -58,7 +58,7 @@ void handler(void) {
 	    "			pushl %%edx\n"
 	    "			pushl %%esi\n"
 	    "			pushl %%edi\n"
-	    "			call *%0\n"
+            "			call *%0\n"
 	    "			popl %%edi\n"
 	    "			popl %%esi\n"
 	    "			popl %%edx\n"

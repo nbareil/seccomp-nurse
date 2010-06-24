@@ -3,8 +3,13 @@
 import logging, os
 securitylog = logging.getLogger("sandbox.security")
 
+def inrange(addr, section_range):
+    a,b = section_range
+    return a <= addr < b
+
 class SecurityManager(object):
-    def __init__(self, fs_root='/'):
+    def __init__(self, mappings, fs_root='/'):
+        self.protectedareas = mappings
         self.fs_root  = fs_root
         self.fd_table = {}
 
@@ -64,7 +69,11 @@ class SecurityManager(object):
         return True
 
     def is_valid(self, ptr):
-        ret = True # XXX
+        ret = True
+        for area in self.protectedareas:
+            if inrange(ptr, area):
+                ret=False
+                break
         if not ret:
             tubelog.error('invalid pointer supplied: %#x' % ptr)
         return ret
