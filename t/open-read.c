@@ -13,5 +13,6 @@ int main(void) {
         }
 
         close(fd);
+	exit(1);
 }
 
