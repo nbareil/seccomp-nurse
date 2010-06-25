@@ -156,7 +156,7 @@ class HybridSandbox:
 
     @syscall(NR_getpid)
     def getpid(self):
-        return self.pid
+        return int(self.trustedthread.pid)
 
     @syscall(NR_gettimeofday)
     def gettimeofday(self, tv_ptr, tz_ptr):
