@@ -31,6 +31,9 @@ class SecurityManager(object):
         return opened
 
     def open(self, filename, perms, mode):
+        path = os.path.realpath(filename)
+	if path.startswith('/secret/'):
+            return False
         return True # XXX
 
     def close(self, fd):
