@@ -7,10 +7,12 @@ from optparse import OptionParser
 
 THREAD_FD=3
 CONTROL_FD=4
-TRUSTED_PATH='./hybrid.py'
 
+
+sandboxdir=os.path.dirname(sys.argv[0])
 LDLINUX='/lib/ld-linux.so.2'
-RTLDAUDIT='./sandbox.so'
+TRUSTED_PATH=os.path.join(sandboxdir, 'hybrid.py')
+RTLDAUDIT=os.path.join(sandboxdir, 'sandbox.so')
 LDLINUX_ARGS = [LDLINUX, '--audit', RTLDAUDIT]
 
 SANDBOX_USAGE='''usage: %prog [options] -- cmd args1 args2
@@ -27,6 +29,7 @@ if not args:
     sys.exit(1)
 
 os.environ['SECCOMP_NURSE_LOGLEVEL'] = options.loglevel
+os.environ['LD_BIND_NOW'] = '1'
 
 cmd=args[0]
 try:
