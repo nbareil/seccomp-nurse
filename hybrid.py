@@ -174,6 +174,13 @@ class HybridSandbox:
         self.trustedthread.delegate(args, willexit=True)
         sys.exit(val)
 
+    @syscall(NR_ioctl)
+    def ioctl(self, fd, request):
+        sandboxlog.debug('ioctl(%d, %#x)' % (fd, request))
+        ## we should eventually support some ioctl but for the moment
+        ## let's simulate a success :)
+        return 0
+
     @syscall(NR_lseek)
     def lseek(self, fd, offset, whence):
         if not self.security.lseek(fd, offset, whence):
@@ -272,6 +279,18 @@ class HybridSandbox:
                       ebx=addr,
                       ecx=length)
         return self.trustedthread.delegate(args)
+
+    @syscall(NR_rt_sigaction)
+    def rt_sigaction(self, signum, ptr, oldptr):
+        ## signals will never be supported so we cross our fingers and
+        ## let the caller believe the syscall succeed
+        return 0
+
+    @syscall(NR_sigaction)
+    def sigaction(self, signum, ptr, oldptr):
+        ## signals will never be supported so we cross our fingers and
+        ## let the caller believe the syscall succeed
+        return 0
 
     @syscall(NR_time)
     def time(self, time_ptr):
