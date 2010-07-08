@@ -1,0 +1,41 @@
+2010-07-08  Nicolas Bareil  <nico@chdir.org>
+
+	* Milestone: python console runs!
+	  The python binary was compiled with --disable-shared since I don't support
+	  dlopen() yet.
+
+	  Screenshot (with a simple security check deniying /secret only to open()) :
+
+	  foobar@debian32 :~/python-2.6$ sandbox -- ./python
+	  Python 2.6.5+ (release26-maint :82382M, Jul 6 2010, 15 :41 :57) [GCC 4.4.4] on linux2
+	  Type "help", "copyright", "credits" or "license" for more information.
+	  >>> fd=open(’/etc/resolv.conf’)
+	  >>> for line in fd :
+	  ...    print line,
+	  ...
+	  nameserver 192.168.9.2
+	  domain vmlab
+	  search vmlab
+	  >>> import sys
+	  >>> sys.path.append(’/usr/lib/python2.6/’)
+	  >>> import os
+	  >>> os.getpid()
+	  27997
+	  >>> open(’/secret/password’)
+	  Traceback (most recent call last) :
+	  File "<stdin>", line 1, in <module>
+	  IOError : [Errno 1] Operation not permitted : ’/secret/password
+	  >>> open(’/var/log/../.././././../secret/password’)
+	  Traceback (most recent call last) :
+	  File "<stdin>", line 1, in <module>
+	  IOError : [Errno 1] Operation not permitted : ’/var/log/../.././././../secret/password’
+	  >>> os.access('/secret/password', os.R_OK)
+	  True
+
+
+        * Implementation of new syscalls (just enough to run some
+          binaries)
+
+        * sandbox: rewrote in Python. It now has a CLI options (--debug
+	  switch instead of environment variables) and can be run outside
+          of $PWD
