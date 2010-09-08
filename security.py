@@ -37,7 +37,7 @@ class SecurityManager(object):
         return True # XXX
 
     def close(self, fd):
-        return True # XXX
+        return True
 
     def access(self, path, mode):
         return True
