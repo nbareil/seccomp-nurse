@@ -66,9 +66,17 @@ class SecurityManager(object):
         return ret
 
     def mmap2(self, addr, length, prot, flags, fd, pgoffset):
+        if addr != 0:
+            if not (self.is_valid(addr) and self.is_valid(addr+length)):
+                securitylog.debug('mmap2() => invalid address: %#x' % addr)
+                return False
         return True
 
     def mmap(self, addr, length, prot, flags, fd, offset):
+        if addr != 0:
+            if not (self.is_valid(addr) and self.is_valid(addr+length)):
+                securitylog.debug('mmap() => invalid address: %#x' % addr)
+                return False
         return True
 
     def is_valid(self, ptr):
