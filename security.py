@@ -58,7 +58,7 @@ class SecurityManager(object):
         return self.is_valid(addr) # XXX
 
     def munmap(self, addr, length):
-        return True # XXX
+        return self.is_valid(addr) and self.is_valid(addr+length)
 
     def fstat(self, fd, ptr):
         ret = self.is_valid(ptr) and ((0 <= fd <= 2) or (fd in self.fd_table))
