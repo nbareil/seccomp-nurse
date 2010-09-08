@@ -336,7 +336,7 @@ class HybridSandbox:
         msgtype = struct.unpack('I', rawtype)[0]
         if msgtype == DO_SYSCALL:
             ret = self.syscall_request()
-            if hasattr(ret, '__getiter__'):
+            if type(ret) is tuple:
                 ret,errno=ret
             else:
                 errno=0
