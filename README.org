@@ -1,0 +1,47 @@
+seccomp-nurse
+
+* About
+
+  =seccomp-nurse= is a sandboxing framework based on =SECCOMP=.
+
+* How to use it?
+
+:  $ git clone git://github.com/nbareil/seccomp-nurse.git
+:  $ cd seccomp-nurse/
+:  $ make
+:  $ ./sanbdox -- /usr/bin/pdftotext ~/resume.pdf /tmp/resume.txt
+
+  Easy, isn't it?
+
+* Current limitations
+
+  - =dlopen()= not supported *yet*
+
+  - =clone()= (so =fork()= and threads) will *never* be supported
+
+  - =socket()= not supported (yet?)
+
+  - =exec*()= will *never* be supported
+
+  At the moment, there is no security check implemented. The sandbox
+  is wide open! It will be the next step.
+
+* References
+
+  - Blog post about "[[http://justanothergeek.chdir.org/2010/03/seccomp-as-sandboxing-solution.html][SECCOMP as a sandboxing solution?]]"
+
+  - Blog post about "[[http://justanothergeek.chdir.org/2010/02/how-system-calls-work-on-recent-linux.html][How system calls work on Linux?]]"
+
+  - Chrome browser:
+    - [[http://www.imperialviolet.org/2009/08/26/seccomp.html][Chromium's seccomp Sandbox by Adam Langley]]
+    - [[http://lwn.net/Articles/347547/][LWN's article by Jake Edge]]
+
+* Availability
+
+  =seccomp-nurse= is a free software available under the GNU Public
+  Licence 2! Sources are availables on github: http://github.com/nbareil/seccomp-nurse/
+
+* Acknowledgment
+
+  This work was funded by the  European Commission under contract
+  IST-FP6-033576 (through the [[http://www.xtreemos.eu/][XtreemOS project]]) and [[http://www.eads.net/][EADS Innovation Works]].

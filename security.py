@@ -12,6 +12,7 @@ class SecurityManager(object):
         self.protectedareas = mappings
         self.fs_root  = fs_root
         self.fd_table = {}
+        self.fs_whitelist = ['/etc', '/usr', '/bin', '/tmp']
 
     def register_descriptor(self, fd, filename):
         if fd in self.fd_table:
@@ -31,16 +32,13 @@ class SecurityManager(object):
         return opened
 
     def open(self, filename, perms, mode):
-        path = os.path.realpath(filename)
-	if path.startswith('/secret/'):
-            return False
-        return True # XXX
+        return self.is_valid_path(filename)
 
     def close(self, fd):
-        return True # XXX
+        return True
 
     def access(self, path, mode):
-        return True
+        return self.is_valid_path(filename)
 
     def getcwd(self, ptr):
         return self.is_valid(ptr) # XXX
@@ -58,7 +56,7 @@ class SecurityManager(object):
         return self.is_valid(addr) # XXX
 
     def munmap(self, addr, length):
-        return True # XXX
+        return self.is_valid(addr) and self.is_valid(addr+length)
 
     def fstat(self, fd, ptr):
         ret = self.is_valid(ptr) and ((0 <= fd <= 2) or (fd in self.fd_table))
@@ -66,9 +64,17 @@ class SecurityManager(object):
         return ret
 
     def mmap2(self, addr, length, prot, flags, fd, pgoffset):
+        if addr != 0:
+            if not (self.is_valid(addr) and self.is_valid(addr+length)):
+                securitylog.debug('mmap2() => invalid address: %#x' % addr)
+                return False
         return True
 
     def mmap(self, addr, length, prot, flags, fd, offset):
+        if addr != 0:
+            if not (self.is_valid(addr) and self.is_valid(addr+length)):
+                securitylog.debug('mmap() => invalid address: %#x' % addr)
+                return False
         return True
 
     def is_valid(self, ptr):
@@ -78,8 +84,15 @@ class SecurityManager(object):
                 ret=False
                 break
         if not ret:
-            tubelog.error('invalid pointer supplied: %#x' % ptr)
+            securitylog.error('invalid pointer supplied: %#x' % ptr)
         return ret
+
+    def is_valid_path(self, filename):
+        path = os.path.realpath(filename)
+        for authorized_path in self.fs_whitelist:
+            if path.startswith(authorized_path):
+                return True
+        return False
 
     def lseek(self, fd, offset, whence):
         return True # XXX
