@@ -29,12 +29,12 @@ loop_read:
         cmpl $0, %eax
         jle out
 
-        call execute_syscall
+        jmp execute_syscall
+execute_syscall_ret:
         jmp loop_read
 
 out:
         int3
-        ret
 
 /**
  * execute_syscall() - execute syscall written in shared area
@@ -73,7 +73,7 @@ loop_ret:
         jmp loop_ret
         
 real_ret:
-        ret
+        jmp execute_syscall_ret
 
 /**
  * companion_routine() - companion thread
@@ -82,5 +82,4 @@ real_ret:
         .global companion_routine
 companion_routine:
         movl range_start, %eax
-        call wait_for_trigger
-        ret
+        jmp wait_for_trigger
