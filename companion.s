@@ -1,11 +1,5 @@
         .section .text
 
-        .global range_start
-        .global range_end
-        .global junk_zone
-        .global syscall_dropbox
-        .global retarray
-
 /**
  * wait_for_trigger() - wait for order
  *
@@ -21,10 +15,10 @@ wait_for_trigger:
 
 loop_read:
         movl $3, %ebx
-        movl $junk_zone, %ecx
-        movl $4, %edx           ; JUNK_SIZE=4
+        movd %mm2, %ecx
+        movl $4, %edx
         movl $3, %eax
-        int $0x80
+        int $0x80           /* read(3, &junk, 4) */
 
         cmpl $0, %eax
         jle out
@@ -35,6 +29,7 @@ execute_syscall_ret:
 
 out:
         int3
+        jmp fatal
 
 /**
  * execute_syscall() - execute syscall written in shared area
@@ -45,7 +40,7 @@ out:
  *
  */
 execute_syscall:
-        mov syscall_dropbox, %edi
+        movd %mm1, %edi
         movl  0(%edi), %eax
         movl  4(%edi), %ebx
         movl  8(%edi), %ecx
@@ -61,11 +56,12 @@ loop_ret:
         cmp $0, %edi
         jle real_ret
         
-        mov %esi, %edx
-        andl $0xff, %edx
         movl $4, %eax
         movl $3, %ebx
-        lea retarray(%edx), %ecx
+        mov %esi, %edx
+        andl $0xff, %edx
+        movd %mm3, %ecx
+        leal 0(%ecx, %edx, 1), %ecx
         movl $1, %edx
         shrl $8, %esi
         int $0x80
@@ -81,5 +77,12 @@ real_ret:
  */
         .global companion_routine
 companion_routine:
-        movl range_start, %eax
+        jmp disable_signals
+go_wait:
         jmp wait_for_trigger
+
+fatal:
+        int3
+        movl $252, %eax
+        movl $1, %ebx
+        int $0x80

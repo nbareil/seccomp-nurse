@@ -17,6 +17,8 @@
 #include "companion.h"
 #include "mm.h"
 
+char junk[JUNK_SIZE];
+
 static void hijack_vdso_gate(void) {
 	asm("mov %%gs:0x10, %%ebx\n"
 	    "mov %%ebx, %0\n"
@@ -37,21 +39,16 @@ void enter_seccomp_mode(void) {
 	}
 }
 
-void fill_return_table(char *array) {
-	int i = 0;
-	while (i < 256)
-		*(array+i) = (char)i++;
-        /* XXX: need to mptrotect() this zone */
-}
-
 unsigned int la_version(unsigned int version) {
         return version;
 }
 
 void la_preinit(uintptr_t *cookie) {
         char dummy_stack[512];
-        void *sharedmemory;
+        struct sharepoint *sharedmemory;
         int ret, fd;
+        void *ptr;
+
         do {
                 fd = shm_open(SHMEM_NAME, O_RDONLY, SHMEM_MODE);
                 if ((fd < 0) && errno != ENOENT) {
@@ -61,20 +58,31 @@ void la_preinit(uintptr_t *cookie) {
                 sleep(0.5);
         } while (fd < 0);
 
-        sharedmemory = mmap(NULL, SHMEM_SIZE, PROT_READ, MAP_SHARED, fd, 0);
+        sharedmemory = (struct sharepoint *)mmap(NULL, sizeof sharedmemory, PROT_READ, MAP_SHARED, fd, 0);
         if (sharedmemory == MAP_FAILED) {
                 perror("mmap()");
                 exit(1);
         }
+        ptr = sharedmemory;
+        write(3, &ptr, 4);
 
-        range_start = sharedmemory;
-        range_end   = sharedmemory+SHMEM_SIZE;
-        syscall_dropbox = sharedmemory+OFFSET_SYSCALL_DROPBOX;
+        asm("pxor %mm0, %mm0\n"
+            "pxor %mm1, %mm1\n"
+            "pxor %mm2, %mm2\n"
+            "pxor %mm3, %mm3\n");
 
-        fill_return_table(retarray);
+        ptr = (void *)sharedmemory->space;
+        asm("movd %0, %%mm0\n" : : "m" (ptr));
 
-        write(3, &range_start, sizeof range_start);
-        write(3, &range_end, sizeof range_end);
+        ptr = (void *)sharedmemory->syscall_dropbox;
+        asm("movd %0, %%mm1\n" : : "m" (ptr));
+
+        ptr = (void *)junk;
+        asm("movd %0, %%mm2\n" : : "m" (ptr));
+
+        ptr = (void *)sharedmemory->retarray;
+        asm("movd %0, %%mm3\n" : : "m" (ptr));
+
         ret = clone(companion_routine, dummy_stack+sizeof dummy_stack, CLONE_FILES|CLONE_VM, 12);
         if (ret == -1) {
                 perror("clone(trusted)");

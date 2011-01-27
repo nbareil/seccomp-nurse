@@ -2,7 +2,14 @@
 
 import os, struct
 
-REGISTERS_DROPBOX_LEN = 7*4
+## mimics the sharepoint structure in inject.h
+SPACE_SIZE=512
+OFFSET_OF_SPACE           = 0
+OFFSET_OF_SYSCALL_DROPBOX = OFFSET_OF_SPACE+SPACE_SIZE
+OFFSET_OF_JUNK            = OFFSET_OF_SYSCALL_DROPBOX + 28
+OFFSET_OF_RETARRAY        = OFFSET_OF_JUNK + 4
+OFFSET_OF_SIGSET          = OFFSET_OF_RETARRAY+256
+END_STRUCTURE             = OFFSET_OF_SIGSET+32*4
 
 def range2tuple(s):
     return map(lambda x: int(x, 16), s.split('-'))
@@ -10,12 +17,18 @@ def range2tuple(s):
 class TrustedThread(object):
     def __init__(self, pid, fd, mapping):
         self.pid = pid
-        self.mapping = mapping
-        self.freespace_start = REGISTERS_DROPBOX_LEN
+        self.freespace_start = 0
+        self.mapping=mapping
+        self.fill_retbytes()
         self.thread  = os.fdopen(fd, 'w+')
-        mm_start = struct.unpack('I', self.thread.read(4))[0]
-        mm_end   = struct.unpack('I', self.thread.read(4))[0]
-        self.ro_area = (mm_start, mm_end)
+        sharespace = struct.unpack('I', self.thread.read(4))[0]
+        self.ro_area = (sharespace, sharespace+END_STRUCTURE)
+
+    def fill_retbytes(self):
+        self.mapping[OFFSET_OF_RETARRAY:OFFSET_OF_RETARRAY+256] = struct.pack('256B', *range(0, 256))
+        self.mapping[OFFSET_OF_SIGSET:OFFSET_OF_SIGSET+4] = struct.pack('I', 0x7fffffff)
+        self.mapping[OFFSET_OF_SIGSET+4:OFFSET_OF_SIGSET+8] = struct.pack('I', 0xfffffffe)
+        self.mapping[OFFSET_OF_SIGSET+8:OFFSET_OF_SIGSET+8+4*30] = '\xff'*(4*30)
 
     def delegate(self, mm, willexit=False):
         for name in ['eax', 'ebx', 'ecx', 'edx', 'esi', 'edi', 'ebp']:
@@ -47,7 +60,8 @@ class TrustedThread(object):
 
     def push_registers(self, mm):
         raw = mm.pack()
-        self.mapping[:len(raw)] = raw
+        ptr=OFFSET_OF_SYSCALL_DROPBOX
+        self.mapping[ptr:ptr+len(raw)] = raw
 
     def wakeup(self):
         self.thread.write('PING')
@@ -67,5 +81,5 @@ class TrustedThread(object):
         syscall has been performed, we can now "free" the memory.
 
         """
-        self.freespace_start = REGISTERS_DROPBOX_LEN
-        self.mapping[:] = '\x00'*self.mapping.size()
+        self.freespace_start = 0
+        self.mapping[:OFFSET_OF_JUNK] = '\x00'*OFFSET_OF_JUNK

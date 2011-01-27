@@ -82,10 +82,6 @@ int wait_for_orders(const int fd) {
                             : "m" (ret));
 			break;
 
-		case MEMORY_POOL:
-			write(fd, &range_start, sizeof range_start);
-			break;
-
                 case RAISE_TRAP:
 			asm("int3\n");
 			break;
