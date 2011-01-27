@@ -71,6 +71,23 @@ loop_ret:
 real_ret:
         jmp execute_syscall_ret
 
+
+/**
+ * disable_signals() - block all signals
+ *
+ */
+disable_signals:
+        movl $126, %eax         /* __NR_sigprocmask */
+        movl $0, %ebx           /* how = SIG_BLOCK */
+        movd %mm3, %edx
+        lea 256(%edx), %ecx     /* set */
+        movl $0, %edx           /* oldset = NULL */
+        int $0x80
+        test %eax, %eax
+        jnz fatal
+        /* XXX: should do the same thing with rt_sigprocmask? */
+        jmp go_wait
+
 /**
  * companion_routine() - companion thread
  *

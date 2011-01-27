@@ -13,7 +13,7 @@ import security
 
 THREAD_FD = 3
 CONTROL_FD = 4
-SHMEM_SIZE = 0x100
+SHMEM_SIZE = 1800
 SHMEM_FILENAME = '/dev/shm/seccompnurse'
 
 class Memory:
