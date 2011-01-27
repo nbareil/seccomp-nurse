@@ -85,7 +85,14 @@ disable_signals:
         int $0x80
         test %eax, %eax
         jnz fatal
-        /* XXX: should do the same thing with rt_sigprocmask? */
+        movl $175, %eax         /* __NR_rt_sigprocmask */
+        movd %mm3, %edx
+        lea 256(%edx), %ecx     /* set */
+        movl $0, %edx           /* oldset = NULL */
+        movl $8, %esi           /* sigsetsize=sizeof(sigset_t) */
+        int $0x80
+        test %eax, %eax
+        jnz fatal
         jmp go_wait
 
 /**
