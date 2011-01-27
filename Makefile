@@ -13,4 +13,6 @@ sandbox.so: companion.o common.o helper.o jail.o inject.o
 clean:
 	rm -f *.so *.o *pyc $(BINARIES)
 
-
+check: companion.o
+	@echo "Checking there is no stack usage..."
+	@objdump -D $< |(grep -E '\<(esp|ebp|call|ret|push|pop)\>' && exit 1; exit 0)

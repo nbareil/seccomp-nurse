@@ -24,7 +24,7 @@ loop_read:
         jle out
 
         jmp execute_syscall
-execute_syscall_ret:
+execute_syscall_end:
         jmp loop_read
 
 out:
@@ -52,9 +52,9 @@ execute_syscall:
         movl %eax, %esi
         movl $4, %edi
 
-loop_ret:
+loop_end:
         cmp $0, %edi
-        jle real_ret
+        jle real_end
         
         movl $4, %eax
         movl $3, %ebx
@@ -66,10 +66,10 @@ loop_ret:
         shrl $8, %esi
         int $0x80
         decl %edi
-        jmp loop_ret
+        jmp loop_end
         
-real_ret:
-        jmp execute_syscall_ret
+real_end:
+        jmp execute_syscall_end
 
 
 /**
