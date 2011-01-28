@@ -32,7 +32,7 @@ void syscall_proxy(void) {
 	     "movl %%ebx, 28(%%eax)\n"
 	     :: "a" (buf) );
 
-	write(CONTROL_FD, buf, sizeof buf);
+	xwrite(CONTROL_FD, buf, sizeof buf);
 	ret = wait_for_orders(CONTROL_FD);
         asm("movl %0, %%eax\n" : : "m" (ret));
 }

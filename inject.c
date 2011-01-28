@@ -64,7 +64,7 @@ void la_preinit(uintptr_t *cookie) {
                 exit(1);
         }
         ptr = sharedmemory;
-        write(3, &ptr, 4);
+        xwrite(3, &ptr, 4);
 
         asm("pxor %mm0, %mm0\n"
             "pxor %mm1, %mm1\n"
@@ -83,7 +83,7 @@ void la_preinit(uintptr_t *cookie) {
         ptr = (void *)sharedmemory->retarray;
         asm("movd %0, %%mm3\n" : : "m" (ptr));
 
-        ret = clone(companion_routine, dummy_stack+sizeof dummy_stack, CLONE_FILES|CLONE_VM, 12);
+        ret = xclone(companion_routine, dummy_stack+sizeof dummy_stack, CLONE_FILES|CLONE_VM, 12);
         if (ret == -1) {
                 perror("clone(trusted)");
                 exit(1);

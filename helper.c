@@ -1,7 +1,6 @@
 #include <unistd.h>
 #include <linux/types.h>
 #include <errno.h>
-
 #include "helper.h"
 #include "companion.h"
 #include "common.h"
@@ -19,8 +18,8 @@ ssize_t peek_asciiz_request(const int fd, const char *start) {
 	while (*ptr++)
 		i++;
 
-	write(fd, &i, sizeof i);
-	return write(fd, start, i);
+	xwrite(fd, &i, sizeof i);
+	return xwrite(fd, start, i);
 }
 
 ssize_t poke_memory_request(const int fd, const struct memory_op_msg * req) {
@@ -29,7 +28,7 @@ ssize_t poke_memory_request(const int fd, const struct memory_op_msg * req) {
 	char *ptr = req->addr;
 
 	while (bytesread < req->len) {
-		ret = read(fd, ptr, req->len - bytesread);
+		ret = xread(fd, ptr, req->len - bytesread);
 		if (ret < 0) {
 			PERROR("poke_memory/read failed:");
 		}
@@ -40,7 +39,7 @@ ssize_t poke_memory_request(const int fd, const struct memory_op_msg * req) {
 }
 
 ssize_t peek_memory_request(const int fd, const struct memory_op_msg * req) {
-	return write(fd, req->addr, req->len);
+	return xwrite(fd, req->addr, req->len);
 }
 
 int wait_for_orders(const int fd) {
