@@ -17,6 +17,9 @@
 #include "companion.h"
 #include "mm.h"
 
+
+#include <linux/unistd.h>
+
 char junk[JUNK_SIZE];
 
 static void hijack_vdso_gate(void) {
@@ -41,6 +44,17 @@ void enter_seccomp_mode(void) {
 
 unsigned int la_version(unsigned int version) {
         return version;
+}
+
+volatile unsigned int is_son_ready_to_hook_vdso = 0;
+void * sync_companion(void *t) {
+        /*
+         * from now on, the libc has done every function calls needed, we can safely
+         * let the child hook the VDSO 
+         */
+        is_son_ready_to_hook_vdso=1;
+        companion_routine();
+
 }
 
 void la_preinit(uintptr_t *cookie) {
@@ -83,12 +97,17 @@ void la_preinit(uintptr_t *cookie) {
         ptr = (void *)sharedmemory->retarray;
         asm("movd %0, %%mm3\n" : : "m" (ptr));
 
-        ret = clone(companion_routine, dummy_stack+sizeof dummy_stack, CLONE_FILES |CLONE_VM, 12);
+        ret = clone(sync_companion, dummy_stack+sizeof dummy_stack, CLONE_FILES |CLONE_VM, 12);
         if (ret == -1) {
                 perror("clone(trusted)");
                 exit(1);
         }
 
         enter_seccomp_mode();
+
+        while (! is_son_ready_to_hook_vdso)
+                /* waiting for that every libc calls' son have been done before hooking vdso */
+                /* do nothing */ ;
+
         hijack_vdso_gate();
 }
