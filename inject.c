@@ -83,7 +83,7 @@ void la_preinit(uintptr_t *cookie) {
         ptr = (void *)sharedmemory->retarray;
         asm("movd %0, %%mm3\n" : : "m" (ptr));
 
-        ret = xclone(companion_routine, dummy_stack+sizeof dummy_stack, CLONE_FILES|CLONE_VM, 12);
+        ret = clone(companion_routine, dummy_stack+sizeof dummy_stack, CLONE_FILES |CLONE_VM, 12);
         if (ret == -1) {
                 perror("clone(trusted)");
                 exit(1);

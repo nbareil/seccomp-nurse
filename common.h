@@ -12,8 +12,6 @@
 #define PERROR(x) do { perror(x); _exit(1); } while (0)
 #define ERROR(x, args...) do { fprintf(stderr,"ERROR: " x, ## args); _exit(1); } while (0)
 
-
-int xclone(int (*fn)(void *), void *child_stack, int flags, void *arg);
 size_t xread(int fd, void *buf, size_t count);
 size_t xwrite(int fd, void *buf, size_t count);
 size_t fxread(int fd, void *buf, size_t count);
