@@ -1,5 +1,6 @@
 #! /usr/bin/env python
 
+import sizeof
 import logging, os
 securitylog = logging.getLogger("sandbox.security")
 
@@ -34,11 +35,39 @@ class SecurityManager(object):
     def open(self, filename, perms, mode):
         return self.is_valid_path(filename)
 
+    def connect(self, sockfd, addr, addrlen):
+        # XXX: verify if we are allowed to connect to this address
+        return self.is_valid(addr, addrlen)
+
+    def recvmsg(self, sockfd, buf, flags):
+        ## XXX: just check this is a registered network socket maybe?
+        return True
+
+    def sendto(self, sockfd, buf, flags):
+        ## XXX: just check this is a registered network socket maybe?
+        return True
+
+    def bind(self, sockfd, addr):
+        # XXX: verify if allowed to bind address/port
+        return True
+
+    def getsockname(self, sockfd, ptr, addrlen):
+        # XXX: just check this is a registered network socket maybe?
+        return self.is_valid(ptr, addrlen)
+
     def close(self, fd):
         return True
 
     def access(self, path, mode):
         return self.is_valid_path(filename)
+
+    def epoll_create(self, size):
+        # XXX
+        return size < 0x10000
+
+    def fcntl64(self, fd, cmd, args_list):
+        # XXX: verify cmd
+        return True
 
     def getcwd(self, ptr):
         return self.is_valid(ptr) # XXX
@@ -77,14 +106,16 @@ class SecurityManager(object):
                 return False
         return True
 
-    def is_valid(self, ptr):
+    def is_valid(self, ptr, size=None):
         ret = True
         for area in self.protectedareas:
-            if inrange(ptr, area):
+            if inrange(ptr, area) or (size and inrange(ptr+size, area)):
                 ret=False
                 break
         if not ret:
-            securitylog.error('invalid pointer supplied: %#x' % ptr)
+            securitylog.error('invalid pointer supplied: %#x%s' % (ptr,
+                                                                   '-%#x' % ptr+size if size else ''))
+            securitylog.error(map(str, [map(hex, m) for m in self.protectedareas]))
         return ret
 
     def is_valid_path(self, filename):
@@ -92,6 +123,7 @@ class SecurityManager(object):
         for authorized_path in self.fs_whitelist:
             if path.startswith(authorized_path):
                 return True
+        securitylog.error('Denying access to "%s" (see whitelist)' % filename)
         return False
 
     def lseek(self, fd, offset, whence):
@@ -104,13 +136,20 @@ class SecurityManager(object):
         return self.is_valid(bufptr) # XXX
 
     def time(self, bufptr):
-        return self.is_valid(bufptr) # XXX
+        return self.is_valid(bufptr, sizeof.time_t)
 
     def times(self, bufptr):
-        return self.is_valid(bufptr) # XXX
+        return self.is_valid(bufptr, sizeof.tms)
+
+    def sendfile(self, outfd, infd, offset_ptr, count):
+        # XXX: Verify infd and outfd?
+        return self.is_valid(offset_ptr, 4)
+
+    def socket(self, domain, type, protocol):
+        return True # XXX
 
     def stat64(self, path, addr):
-        return self.is_valid(addr) # XXX
+        return self.is_valid(addr, sizeof.stat) # XXX
 
     def access(self, path, mode):
         return True # XXX

@@ -5,9 +5,9 @@ BINARIES=sandbox.so
 
 .PHONY: all clean
 
-all: $(BINARIES)
+all: $(BINARIES) sizeof.py
 
-sandbox.so: companion.o common.o helper.o jail.o inject.o
+sandbox.so: companion.o common.o helper.o jail.o inject.o preload.o
 	gcc -shared -WI,soname,$@.1 -o $@ $^ -lc -ldl -lrt
 
 clean:
@@ -16,3 +16,6 @@ clean:
 check: companion.o
 	@echo "Checking there is no stack usage..."
 	@objdump -D $< |(grep -E '\<(esp|ebp|call|ret|push|pop)\>' && exit 1; exit 0)
+
+sizeof.py: t/sizeof
+	$< > $@

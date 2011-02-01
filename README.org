@@ -9,7 +9,7 @@ seccomp-nurse
 :  $ git clone git://github.com/nbareil/seccomp-nurse.git
 :  $ cd seccomp-nurse/
 :  $ make
-:  $ ./sanbdox -- /usr/bin/pdftotext ~/resume.pdf /tmp/resume.txt
+:  $ ./sandbox -- /usr/bin/pdftotext ~/resume.pdf /tmp/resume.txt
 
   Easy, isn't it?
 
@@ -19,7 +19,7 @@ seccomp-nurse
 
   - =clone()= (so =fork()= and threads) will *never* be supported
 
-  - =socket()= not supported (yet?)
+  - =socket()=: *work in progress*!
 
   - =exec*()= will *never* be supported
 

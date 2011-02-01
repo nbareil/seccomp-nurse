@@ -28,7 +28,6 @@ execute_syscall_end:
         jmp loop_read
 
 out:
-        int3
         jmp fatal
 
 /**
@@ -46,6 +45,7 @@ execute_syscall:
         movl  8(%edi), %ecx
         movl 12(%edi), %edx
         movl 16(%edi), %esi
+        movl 24(%edi), %ebp
         movl 20(%edi), %edi
         int $0x80
 

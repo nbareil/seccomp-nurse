@@ -13,7 +13,7 @@ sandboxdir=os.path.dirname(sys.argv[0])
 LDLINUX='/lib/ld-linux.so.2'
 TRUSTED_PATH=os.path.join(sandboxdir, 'hybrid.py')
 RTLDAUDIT=os.path.join(sandboxdir, 'sandbox.so')
-LDLINUX_ARGS = [LDLINUX, '--audit', RTLDAUDIT]
+LDLINUX_ARGS = [LDLINUX, '--audit', RTLDAUDIT, '--library-path', RTLDAUDIT]
 
 SANDBOX_USAGE='''usage: %prog [options] -- cmd args1 args2
 

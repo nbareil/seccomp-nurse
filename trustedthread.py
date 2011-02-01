@@ -40,23 +40,28 @@ class TrustedThread(object):
         self.wakeup()
         if not willexit:
             ret = struct.unpack('I', self.thread.read(4))[0]
-            self.forget()            
+            self.forget()
             return ret
 
     def mappings(self):
         maps=[]
         for line in open('/proc/' + self.pid + '/maps', 'r'):
-            fields = filter(lambda x: x, line[:-1].split(' '))
+            fields = filter(lambda x: x, line.strip().split(' '))
             (memrange, perms, offset, dev, inode) = fields[:5]
-            name = (' '.join(fields[5:]) if len(fields) > 5 else '')
+            try:
+                name = fields[5]
+            except:
+                name = 'n/a'
             maps.append([name, memrange, perms, inode])
         return maps
 
     def get_protected_sections(self):
         sandboxedapp = os.readlink('/proc/' + self.pid + '/exe')
+        sections = [self.ro_area]
         for mm in self.mappings():
-            if mm[0] == sandboxedapp:
-                return (self.ro_area, range2tuple(mm[1]))
+            if mm[0] in [sandboxedapp, '[vdso]', '/dev/shm/seccompnurse']:
+                sections.append(range2tuple(mm[1]))
+        return sections
 
     def push_registers(self, mm):
         raw = mm.pack()
