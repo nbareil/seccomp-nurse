@@ -67,7 +67,7 @@ void handler(void) {
 	    "			jmp out\n"
 
 	    "do_syscall:\n"
-	    "			call *%1\n"
+            "                   int $0x80\n"
 	    "			jmp out\n"
 
 	    "wrap_write:\n"
