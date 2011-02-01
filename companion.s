@@ -106,7 +106,8 @@ go_wait:
         jmp wait_for_trigger
 
 fatal:
-        int3
         movl $252, %eax
         movl $1, %ebx
         int $0x80
+infinite:
+        jmp infinite
