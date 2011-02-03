@@ -624,5 +624,9 @@ if __name__ == '__main__':
     tubelog    = logging.getLogger("sandbox.tube")
 
     sandbox = HybridSandbox()
-    sandbox.run()
+    try:
+        sandbox.run()
+    except KeyboardInterrupt:
+        # kill all processes of my session group and myself
+        os.kill(0, 9)
 
