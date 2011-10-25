@@ -19,5 +19,5 @@ check: companion.o
 
 cloner: jail.c inject.c helper.c common.c companion.s cloner.c
 
-sizeof.py: t/sizeof
+sizeof.py: testcases/sizeof
 	$< > $@
