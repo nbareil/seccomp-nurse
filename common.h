@@ -93,4 +93,24 @@ static inline int __attribute__((always_inline)) xclone(int (*fn)(void *), void 
         return ret;
 }
 
+static inline void * __attribute__((always_inline)) xmmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
+{
+        void *ret;
+
+        asm volatile ("push %%eax\n"
+                      "pop %%ebp\n"
+                      "mov %7, %%eax\n"
+                      "int $0x80\n"
+                      : "=a" (ret)
+                      : "a" (offset),
+                        "b" (addr),
+                        "c" (length),
+                        "d" (prot),
+                        "S" (flags),
+                        "D" (fd),
+                        "i" (SYS_mmap2)
+                      : "memory");
+        return ret;
+}
+
 #endif

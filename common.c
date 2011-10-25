@@ -51,34 +51,3 @@ size_t fxread(int fd, void *buf, size_t count) {
         return ret;
 }
 
-void * xmmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
-{
-        asm("push %%ebx\n"
-            "push %%ecx\n"
-            "push %%edx\n"
-            "push %%esi\n"
-            "push %%edi\n"
-            "push %%ebp\n"
-            "mov %0, %%eax\n"
-            "mov %1, %%ebx\n"
-            "mov %2, %%ecx\n"
-            "mov %3, %%edx\n"
-            "mov %4, %%esi\n"
-            "mov %5, %%edi\n"
-            "mov %6, %%ebp\n"
-            "int $0x80\n"
-            "pop %%ebp\n"
-            "pop %%edi\n"
-            "pop %%esi\n"
-            "pop %%edx\n"
-            "pop %%ecx\n"
-            "pop %%ebx\n"
-            :
-            : "r" (SYS_mmap2),
-              "m" (addr),
-              "m" (length),
-              "m" (prot),
-              "m" (flags),
-              "m" (fd),
-              "m" (offset));
-}
