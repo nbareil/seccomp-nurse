@@ -74,7 +74,7 @@ static inline int __attribute__((always_inline)) xclone(int (*fn)(void *), void 
 {
         int ret;
         child_stack -= 4;
-        *((unsigned int *)child_stack) = fn;
+        *((unsigned int *)child_stack) = (unsigned int)fn;
 
         asm("int $0x80\n"
             "test %%eax, %%eax\n"

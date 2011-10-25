@@ -11,7 +11,7 @@ struct memory_op_msg {
 	__u32 len;
 };
 
-ssize_t peek_asciiz_request(const int fd, const char *start) {
+ssize_t peek_asciiz_request(int fd, char *start) {
 	char * ptr = start;
 	__u32 i = 0;
 
@@ -22,10 +22,10 @@ ssize_t peek_asciiz_request(const int fd, const char *start) {
 	return xwrite(fd, start, i);
 }
 
-ssize_t poke_memory_request(const int fd, const struct memory_op_msg * req) {
+ssize_t poke_memory_request(int fd, struct memory_op_msg * req) {
 	ssize_t ret;
 	size_t bytesread;
-	char *ptr = req->addr;
+	char *ptr = (char *)req->addr;
 
 	while (bytesread < req->len) {
 		ret = xread(fd, ptr, req->len - bytesread);
@@ -38,8 +38,8 @@ ssize_t poke_memory_request(const int fd, const struct memory_op_msg * req) {
 	return bytesread;
 }
 
-ssize_t peek_memory_request(const int fd, const struct memory_op_msg * req) {
-	return xwrite(fd, req->addr, req->len);
+ssize_t peek_memory_request(int fd, struct memory_op_msg * req) {
+	return (ssize_t)xwrite(fd, (void *)req->addr, req->len);
 }
 
 int wait_for_orders(const int fd) {
