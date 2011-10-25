@@ -13,7 +13,7 @@ sandboxdir=os.path.dirname(sys.argv[0])
 LDLINUX='/lib/ld-linux.so.2'
 TRUSTED_PATH=os.path.join(sandboxdir, 'hybrid.py')
 RTLDAUDIT=os.path.join(sandboxdir, 'sandbox.so')
-LDLINUX_ARGS = [LDLINUX, '--audit', RTLDAUDIT, '--library-path', RTLDAUDIT]
+LDLINUX_ARGS = [LDLINUX, '--audit', RTLDAUDIT]
 
 SANDBOX_USAGE='''usage: %prog [options] -- cmd args1 args2
 
@@ -55,12 +55,14 @@ threadsockets  = socket.socketpair()
 
 pid = os.fork()
 if pid == 0:
+    os.environ['LD_PRELOAD'] = os.path.join(os.getcwd(), 'libmylibc.so')
+    os.environ['LD_AUDIT'] = RTLDAUDIT
     os.dup2(controlsockets[1].fileno(), THREAD_FD)
     os.dup2(threadsockets[1].fileno(), CONTROL_FD)
     os.close(6)
     os.close(5)
 
-    os.execve(LDLINUX, LDLINUX_ARGS + args, os.environ)
+    os.execve(args[0], args, os.environ)
 
 elif pid > 0:
     threadsockets[1].close()
