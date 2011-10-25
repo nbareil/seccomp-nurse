@@ -38,7 +38,7 @@ void syscall_proxy(void) {
 }
 
 void (*syscall_proxy_addr)(void) = syscall_proxy;
-void handler(void) {
+void handler_in_seccomp(void) {
 	asm("movl (%%ebp), %%ebp\n" // ignore the gcc prologue
             "cmpl " ivalue(__NR_write) ", %%eax\n"
             //	    "je wrap_read\n"
@@ -85,4 +85,8 @@ void handler(void) {
 	    : /* output */
 	    : "m" (syscall_proxy_addr),
 	      "m" (real_handler));
+}
+
+void handler_int80(void) {
+        asm("int $0x80");
 }

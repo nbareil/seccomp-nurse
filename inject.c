@@ -17,10 +17,9 @@
 #include "companion.h"
 #include "mm.h"
 
+char junk[JUNK_SIZE];
 
 #include <linux/unistd.h>
-
-char junk[JUNK_SIZE];
 
 static void hijack_vdso_gate(void) {
 	asm("mov %%gs:0x10, %%ebx\n"
@@ -30,7 +29,7 @@ static void hijack_vdso_gate(void) {
 	    "mov %%ebx, %%gs:0x10\n"
 
 	    : "=m" (real_handler)
-	    : "r" (handler)
+	    : "r" (handler_in_seccomp)
 	    : "ebx");
 } __attribute__((always_inline));
 
@@ -55,59 +54,4 @@ void * sync_companion(void *t) {
         is_son_ready_to_hook_vdso=1;
         companion_routine();
 
-}
-
-void la_preinit(uintptr_t *cookie) {
-        char dummy_stack[512];
-        struct sharepoint *sharedmemory;
-        int ret, fd;
-        void *ptr;
-
-        do {
-                fd = shm_open(SHMEM_NAME, O_RDONLY, SHMEM_MODE);
-                if ((fd < 0) && errno != ENOENT) {
-                        perror("shm_open()");
-                        exit(1);
-                }
-                sleep(0.5);
-        } while (fd < 0);
-
-        sharedmemory = (struct sharepoint *)mmap(NULL, sizeof sharedmemory, PROT_READ, MAP_SHARED, fd, 0);
-        if (sharedmemory == MAP_FAILED) {
-                perror("mmap()");
-                exit(1);
-        }
-        ptr = sharedmemory;
-        xwrite(3, &ptr, 4);
-
-        asm("pxor %mm0, %mm0\n"
-            "pxor %mm1, %mm1\n"
-            "pxor %mm2, %mm2\n"
-            "pxor %mm3, %mm3\n");
-
-        ptr = (void *)sharedmemory->space;
-        asm("movd %0, %%mm0\n" : : "m" (ptr));
-
-        ptr = (void *)sharedmemory->syscall_dropbox;
-        asm("movd %0, %%mm1\n" : : "m" (ptr));
-
-        ptr = (void *)junk;
-        asm("movd %0, %%mm2\n" : : "m" (ptr));
-
-        ptr = (void *)sharedmemory->retarray;
-        asm("movd %0, %%mm3\n" : : "m" (ptr));
-
-        ret = clone(sync_companion, dummy_stack+sizeof dummy_stack, CLONE_FILES |CLONE_VM, 12);
-        if (ret == -1) {
-                perror("clone(trusted)");
-                exit(1);
-        }
-
-        enter_seccomp_mode();
-
-        while (! is_son_ready_to_hook_vdso)
-                /* waiting for that every libc calls' son have been done before hooking vdso */
-                /* do nothing */ ;
-
-        hijack_vdso_gate();
 }

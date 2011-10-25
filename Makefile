@@ -1,6 +1,6 @@
 #! /usr/bin/make -f
 
-CFLAGS=-O2 -Wall -w -Wextra -g
+CFLAGS=-Wall -w -Wextra -g
 BINARIES=sandbox.so
 
 .PHONY: all clean
@@ -16,6 +16,8 @@ clean:
 check: companion.o
 	@echo "Checking there is no stack usage..."
 	@objdump -D $< |(grep -E '\<(esp|ebp|call|ret|push|pop)\>' && exit 1; exit 0)
+
+cloner: jail.c inject.c helper.c common.c companion.s cloner.c
 
 sizeof.py: t/sizeof
 	$< > $@

@@ -7,18 +7,18 @@
  * 4 bytes are read, this is the signal that the syscall drop box is
  * ready and can be executed.
  *
- * The buffer where bytes are written is the junk zone, theses bytes
- * are undefined and must be ignored.
+ * We don't care about the incoming bytes, this is just a "signal",
+ * that is why we provide NULL to read(). See commit e0055906f1e
  *
  */
 wait_for_trigger:
 
 loop_read:
         movl $3, %ebx
-        movd %mm2, %ecx
+        mov  $0, %ecx
         movl $4, %edx
         movl $3, %eax
-        int $0x80           /* read(3, &junk, 4) */
+        int $0x80           /* read(3, NULL, 4) */
 
         cmpl $0, %eax
         jle out
@@ -60,7 +60,7 @@ loop_end:
         movl $3, %ebx
         mov %esi, %edx
         andl $0xff, %edx
-        movd %mm3, %ecx
+        movd %mm2, %ecx
         leal 0(%ecx, %edx, 1), %ecx
         movl $1, %edx
         shrl $8, %esi
@@ -79,14 +79,14 @@ real_end:
 disable_signals:
         movl $126, %eax         /* __NR_sigprocmask */
         movl $0, %ebx           /* how = SIG_BLOCK */
-        movd %mm3, %edx
+        movd %mm2, %edx
         lea 256(%edx), %ecx     /* set */
         movl $0, %edx           /* oldset = NULL */
         int $0x80
         test %eax, %eax
         jnz fatal
         movl $175, %eax         /* __NR_rt_sigprocmask */
-        movd %mm3, %edx
+        movd %mm2, %edx
         lea 256(%edx), %ecx     /* set */
         movl $0, %edx           /* oldset = NULL */
         movl $8, %esi           /* sigsetsize=sizeof(sigset_t) */
