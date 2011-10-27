@@ -57,22 +57,17 @@ int trustee(void *v)
         ptr = (void *)sharedmemory->retarray;
         asm("movd %0, %%mm2\n" : : "m" (ptr));
 
-	if (xprctl(PR_SET_SECCOMP, 1, 0, 0, 0) == -1)
+	if (xenableseccomp())
                 xexit(4);
 
         /* hijack VDSO now */
-        asm("mov %0, %%ebx\n"
-            "mov %%ebx, %%gs:0x10\n"
-            :
-            : "r" (handler_in_seccomp)
-            : "ebx");
+        asm("mov %%eax, %%gs:0x10\n" : : "a" (handler_in_seccomp));
         _exit(12);
 }
 
 
 int main(void)
 {
-
         int ret;
 
         xwrite(1, "tata\n", 5);

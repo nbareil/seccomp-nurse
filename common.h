@@ -19,98 +19,59 @@
 #define PERROR(x) do { perror(x); _exit(1); } while (0)
 #define ERROR(x, args...) do { fprintf(stderr,"ERROR: " x, ## args); _exit(1); } while (0)
 
-size_t fxread(int fd, void *buf, size_t count);
-int xsigaction(int signum, const struct sigaction *act, struct sigaction *oldact);
-static inline int __attribute__((always_inline)) xopen(const char *pathname, int flags, int mode)
+size_t  fxread(int fd, void *buf, size_t count);
+
+/* int     xsigaction(int signum, const struct sigaction *act, struct sigaction *oldact); */
+/* void *  xmmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset); */
+/* int     xclone(int (*fn)(void *), void *child_stack, int flags, void *arg); */
+/* ssize_t xwrite(int fd, void *buf, size_t count); */
+/* void    xexit(int status); */
+/* int     xenableseccomp(void); */
+/* int     xopen(const char *pathname, int flags, int mode); */
+/* ssize_t xread(int fd, void *buf, size_t count); */
+
+static inline ssize_t __attribute__((always_inline)) xread(int fd, void *buf, size_t count)
 {
-        int ret;
-        asm("int $0x80"
-            : "=a" (ret)
-            : "a" (SYS_open),
-              "b" (pathname),
-              "c" (flags),
-              "d" (mode)
-            : "cc");
+        ssize_t ret = xsyscall3(SYS_read, fd, buf, count);
+
+        if (ret < 0) {
+                _exit(1);
+        }
+
         return ret;
 }
 
-static inline int __attribute__((always_inline)) xprctl(int option, unsigned long arg2, unsigned long arg3,
-                 unsigned long arg4, unsigned long arg5)
-
+static inline ssize_t __attribute__((always_inline)) xwrite(int fd, void *buf, size_t count)
 {
-        asm("int $0x80"
-            : /* output */
-            : "a" (SYS_prctl),
-              "b" (option),
-              "c" (arg2),
-              "d" (arg3),
-              "S" (arg4),
-              "D" (arg5));
+        ssize_t ret = xsyscall3(SYS_write, fd, buf, count);
+
+        if (ret < 0) {
+                _exit(1);
+        }
+
+        return ret;
 }
 
+static inline int __attribute__((always_inline)) xsigaction(int signum, const struct sigaction *act, struct sigaction *oldact)
+{
+        return xsyscall3(SYS_sigaction, signum, act, oldact);
+}
+
+static inline int __attribute__((always_inline)) xopen(const char *pathname, int flags, int mode)
+{
+        return xsyscall3(SYS_open, pathname, flags, mode);
+}
 
 static inline void __attribute__((always_inline)) xexit(int status)
 {
-        asm("int $0x80"
-            : /* output */
-            : "a" (SYS_exit),
-              "b" (status));
+        xsyscall3(SYS_exit, status, 0, 0);
 }
 
-static inline size_t __attribute__((always_inline)) xwrite(int fd, void *buf, size_t count) {
-        asm("int $0x80"
-            :
-            : "a" (SYS_write)
-              , "b" (fd)
-              , "c" (buf)
-              , "d" (count)
-            : "memory");
-
-}
-
-
-static inline int __attribute__((always_inline)) xclone(int (*fn)(void *), void *child_stack,
-           int flags, void *arg)
+static inline int __attribute__((always_inline)) xenableseccomp(void)
 {
-        int ret;
-        child_stack -= 4;
-        *((unsigned int *)child_stack) = (unsigned int)fn;
-
-        asm("int $0x80\n"
-            "test %%eax, %%eax\n"
-            "jnz 1f\n"
-            "pop %%ebx\n"
-            "jmp *%%ebx\n"
-            "1: nop\n"
-
-            : "=a" (ret)
-            : "a" (SYS_clone),
-              "b" (flags),
-              "c" (child_stack),
-              "d" (0),
-              "S" (0),
-              "D" (0));
-        return ret;
+        return xsyscall3(SYS_prctl, PR_SET_SECCOMP, 1, 0);
 }
 
-static inline void * __attribute__((always_inline)) xmmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
-{
-        void *ret;
 
-        asm volatile ("push %%eax\n"
-                      "pop %%ebp\n"
-                      "mov %7, %%eax\n"
-                      "int $0x80\n"
-                      : "=a" (ret)
-                      : "a" (offset),
-                        "b" (addr),
-                        "c" (length),
-                        "d" (prot),
-                        "S" (flags),
-                        "D" (fd),
-                        "i" (SYS_mmap2)
-                      : "memory");
-        return ret;
-}
 
 #endif
