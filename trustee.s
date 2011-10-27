@@ -96,11 +96,11 @@ disable_signals:
         jmp go_wait
 
 /**
- * companion_routine() - companion thread
+ * trustee() - companion thread
  *
  */
-        .global companion_routine
-companion_routine:
+        .global trustee
+trustee:
         jmp disable_signals
 go_wait:
         jmp wait_for_trigger

@@ -13,8 +13,6 @@
 
 #include "common.h"
 
-char dummy_stack[4096];
-char junk[4];
 extern void handler_in_seccomp(void);
 
 
@@ -26,7 +24,7 @@ struct sharepoint {
 } __attribute__ ((packed));
 
 
-int trustee(void *v)
+int launchtrustee(void *v)
 {
         int fd;
         struct sharepoint *sharedmemory;
@@ -34,11 +32,11 @@ int trustee(void *v)
 
         /* do */
         {
-                fd = xopen("/dev/shm/seccomp-nurse", O_RDONLY|O_CREAT, 277);
+            fd = xopen("/dev/shm/seccomp-nurse", O_RDONLY|O_CREAT, 277);
         }
         /* while (fd < 0); */
 
-        sharedmemory = (struct sharepoint *)xmmap(NULL, sizeof sharedmemory, PROT_READ, MAP_SHARED, fd, 0);
+        sharedmemory = (struct sharepoint *)xmmap(NULL, sizeof sharedmemory, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
         xwrite(1, "Hello world\n", 12);
 
         ptr = sharedmemory;
@@ -57,21 +55,24 @@ int trustee(void *v)
         ptr = (void *)sharedmemory->retarray;
         asm("movd %0, %%mm2\n" : : "m" (ptr));
 
-	if (xenableseccomp())
-                xexit(4);
+        if (xenableseccomp())
+            xexit(4);
 
         /* hijack VDSO now */
         asm("mov %%eax, %%gs:0x10\n" : : "a" (handler_in_seccomp));
-        _exit(12);
+        trustee();
+        xexit(12);
 }
 
 
 int main(void)
 {
+        char dummy_stack[4096];
         int ret;
 
         xwrite(1, "tata\n", 5);
-        ret = xclone(trustee, dummy_stack+sizeof dummy_stack, CLONE_FILES |CLONE_VM, NULL);
+        ret = xclone(launchtrustee, dummy_stack+sizeof dummy_stack, CLONE_FILES |CLONE_VM, NULL);
         xwrite(1, "toto\n", 5);
+        while(1);
         xexit(3);
 }

@@ -17,25 +17,21 @@
 #define DEBUGP(x, args...) do { fprintf(stdout, "DEBUGP: " x, ##args);} while (0)
 #define WARNING(x, args...) do { fprintf(stderr, "WARNING: " x, ##args); } while (0)
 #define PERROR(x) do { perror(x); _exit(1); } while (0)
-#define ERROR(x, args...) do { fprintf(stderr,"ERROR: " x, ## args); _exit(1); } while (0)
+#define ERROR(x, args...) do { fprintf(stderr,"ERROR: " x, ## args); xexit(1); } while (0)
 
 size_t  fxread(int fd, void *buf, size_t count);
 
-/* int     xsigaction(int signum, const struct sigaction *act, struct sigaction *oldact); */
-/* void *  xmmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset); */
-/* int     xclone(int (*fn)(void *), void *child_stack, int flags, void *arg); */
-/* ssize_t xwrite(int fd, void *buf, size_t count); */
-/* void    xexit(int status); */
-/* int     xenableseccomp(void); */
-/* int     xopen(const char *pathname, int flags, int mode); */
-/* ssize_t xread(int fd, void *buf, size_t count); */
+static inline void __attribute__((always_inline)) xexit(int status)
+{
+        xsyscall3(SYS_exit, status, 0, 0);
+}
 
 static inline ssize_t __attribute__((always_inline)) xread(int fd, void *buf, size_t count)
 {
         ssize_t ret = xsyscall3(SYS_read, fd, buf, count);
 
         if (ret < 0) {
-                _exit(1);
+                xexit(1);
         }
 
         return ret;
@@ -46,7 +42,7 @@ static inline ssize_t __attribute__((always_inline)) xwrite(int fd, void *buf, s
         ssize_t ret = xsyscall3(SYS_write, fd, buf, count);
 
         if (ret < 0) {
-                _exit(1);
+                xexit(1);
         }
 
         return ret;
@@ -60,11 +56,6 @@ static inline int __attribute__((always_inline)) xsigaction(int signum, const st
 static inline int __attribute__((always_inline)) xopen(const char *pathname, int flags, int mode)
 {
         return xsyscall3(SYS_open, pathname, flags, mode);
-}
-
-static inline void __attribute__((always_inline)) xexit(int status)
-{
-        xsyscall3(SYS_exit, status, 0, 0);
 }
 
 static inline int __attribute__((always_inline)) xenableseccomp(void)
