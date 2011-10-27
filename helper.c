@@ -4,7 +4,6 @@
 #include "helper.h"
 #include "companion.h"
 #include "common.h"
-#include "mm.h"
 
 struct memory_op_msg {
 	__u32 addr;

@@ -15,7 +15,6 @@
 #include "inject.h"
 #include "jail.h"
 #include "companion.h"
-#include "mm.h"
 
 char junk[JUNK_SIZE];
 
