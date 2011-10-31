@@ -7,7 +7,7 @@ BINARIES=sandbox.so
 
 all: $(BINARIES) sizeof.py
 
-sandbox.so: companion.o common.o helper.o jail.o inject.o preload.o
+sandbox.so: companion.o common.o helper.o jail.o inject.o
 	gcc -shared -WI,soname,$@.1 -o $@ $^ -lc -ldl -lrt
 
 clean:
