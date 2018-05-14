@@ -1,5 +1,7 @@
 seccomp-nurse
 
+*This project is now archived. It was a fun project but it does not compile/run anymore and there are far better mechanisms that have been implemented now: firejail, crosvm, gvisor, etc.*
+
 * About
 
   =seccomp-nurse= is a sandboxing framework based on =SECCOMP=.
